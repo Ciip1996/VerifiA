@@ -1,0 +1,79 @@
+// VerifiA — Prisma schema
+// DB: PostgreSQL (Railway)
+// ORM: Prisma ^5.x
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Challenge ────────────────────────────────────────────────────────────
+// Created by the portal (verifier) to initiate a badge session.
+// The nonce is embedded in the QR code deep link.
+model Challenge {
+  id          String   @id @default(cuid())
+  nonce       String   @unique
+  verifier_id String   // maps to JWT `aud`; also the portal's API key
+  exp_time    DateTime
+  status      String   @default("PENDING") // PENDING | USED
+
+  created_at DateTime @default(now())
+
+  @@index([verifier_id])
+  @@index([status])
+  @@map("challenges")
+}
+
+// ─── Token ────────────────────────────────────────────────────────────────
+// Ephemeral badge token issued after successful 3-layer verification.
+// TTL: TOKEN_TTL_SECONDS (default 300s / 5min).
+model Token {
+  id      String @id @default(cuid())
+  jti     String @unique @default(cuid()) // JWT ID — uniqueness key for replay prevention
+  nonce   String @unique                  // links back to the challenge
+  aud     String                          // verifier_id — must match on validation
+  exp     DateTime
+  iat     DateTime @default(now())
+  status  String   @default("ACTIVE")    // ACTIVE | USED | EXPIRED | REVOKED
+  jwt_raw String   @db.Text              // full JWT string (for signature re-verification)
+
+  created_at DateTime @default(now())
+
+  @@index([status])
+  @@index([aud])
+  @@map("tokens")
+}
+
+// ─── AppAttestKey ─────────────────────────────────────────────────────────
+// Registered App Attest keys per device.
+// One key per physical device (can be rotated on re-attestation).
+model AppAttestKey {
+  id               String @id @default(cuid())
+  device_id        String @unique  // Apple Key ID from DCAppAttestService
+  public_key_pem   String @db.Text
+  attestation_data String @db.Text // raw base64url attestation object (for audit)
+
+  created_at DateTime @default(now())
+
+  @@map("app_attest_keys")
+}
+
+// ─── AuditLog ─────────────────────────────────────────────────────────────
+// Immutable audit trail for all security-relevant events.
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // APP_ATTEST_REGISTER | TOKEN_ISSUED | TOKEN_VALIDATED | TOKEN_REJECTED | ...
+  token_jti String?
+  device_id String?
+  result    String   // SUCCESS | FAILURE
+  metadata  Json?    // Optional extra context (error codes, IP, etc.)
+  timestamp DateTime @default(now())
+
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_logs")
+}

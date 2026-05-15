@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+apps/backend/prisma/migrations/**/migration.sql
+# Keep the migrations directory tracked but not migration lock
+!apps/backend/prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/build/
+apps/mobile/pubspec.lock
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+apps/mobile/**/*.g.dart
+apps/mobile/**/*.freezed.dart
+
+# Test coverage
+coverage/
+lcov.info
+
+# Railway / Render deployment artifacts
+.railway/

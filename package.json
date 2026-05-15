@@ -1,0 +1,23 @@
+{
+  "name": "verifia",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "apps/portal",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:backend": "npm -w apps/backend run dev",
+    "dev:portal": "npm -w apps/portal run dev",
+    "build:backend": "npm -w apps/backend run build",
+    "build:portal": "npm -w apps/portal run build",
+    "test:backend": "npm -w apps/backend run test",
+    "lint": "npm -w apps/backend run lint && npm -w apps/portal run lint",
+    "typecheck": "npm -w packages/shared run typecheck && npm -w apps/backend run typecheck && npm -w apps/portal run typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

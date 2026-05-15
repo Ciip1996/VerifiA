@@ -1,0 +1,44 @@
+name: verifia_mobile
+description: VerifiA — App de presencia criptográfica efímera para iOS
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP client
+  dio: ^5.7.0
+
+  # QR scanner
+  mobile_scanner: ^5.2.3
+
+  # Passkeys (FIDO2 / AuthenticationServices)
+  flutter_passkeys: ^2.0.0
+
+  # Face ID / biometric local auth
+  local_auth: ^2.3.0
+
+  # Secure storage (for passkey credential ID, device ID)
+  flutter_secure_storage: ^9.2.2
+
+  # JWT decode (client-side, for display only — never used for security decisions)
+  dart_jsonwebtoken: ^2.14.0
+
+  # Utils
+  uuid: ^4.5.1
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

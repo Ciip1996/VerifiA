@@ -1,0 +1,370 @@
+openapi: 3.0.3
+info:
+  title: VerifiA API
+  version: 1.0.0
+  description: |
+    API REST para el sistema VerifiA de tokens de presencia criptográficos efímeros.
+
+    ## Flujo completo
+    1. Portal → `POST /challenges` → obtiene nonce + QR
+    2. App escanea QR → realiza FaceTec + App Attest + Passkey
+    3. App → `POST /tokens/issue` → recibe JWT ES256
+    4. Portal hace polling → `GET /tokens/verify/:nonce`
+    5. Portal → `POST /tokens/validate/:nonce` → consume token → muestra ✅/❌
+
+  contact:
+    name: Carlos Iván Ibarra Pacheco
+    email: A01646019@tec.mx
+
+servers:
+  - url: https://api.verifia.dev
+    description: Producción (Railway)
+  - url: http://localhost:3001
+    description: Desarrollo local
+
+tags:
+  - name: Challenges
+    description: Generación de nonces para sesiones de verificación
+  - name: App Attest
+    description: Registro y validación de dispositivos Apple
+  - name: Tokens
+    description: Emisión y validación de tokens de presencia
+
+paths:
+  /api/v1/challenges:
+    post:
+      tags: [Challenges]
+      summary: Crear challenge
+      description: |
+        Crea un nuevo challenge (nonce CSPRNG) para una sesión de verificación.
+        El portal llama a este endpoint para generar el QR que el portador escaneará.
+        El `verifier_id` se convierte en el claim `aud` del JWT emitido.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChallengeRequest'
+            example:
+              verifier_id: "mi-empresa-api-key-abc123"
+      responses:
+        '201':
+          description: Challenge creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChallengeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/v1/app-attest/register:
+    post:
+      tags: [App Attest]
+      summary: Registrar llave App Attest
+      description: |
+        Registra la llave pública App Attest de un dispositivo iOS.
+        Se llama una sola vez en el primer lanzamiento de la app.
+        Verifica el attestation object contra los servidores de Apple.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterAttestRequest'
+      responses:
+        '201':
+          description: Dispositivo registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterAttestResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Attestation inválido
+
+  /api/v1/tokens/issue:
+    post:
+      tags: [Tokens]
+      summary: Emitir token de presencia
+      description: |
+        Valida las tres capas de seguridad y emite un JWT ES256 efímero.
+
+        **Capas validadas:**
+        1. App Attest assertion — verifica que la request viene de la app legítima
+        2. FaceTec session — verifica liveness 3D certificado iBeta ISO 30107-3 L2
+        3. Passkey assertion — verifica firma FIDO2 con Face ID en Secure Enclave
+
+        El JWT tiene TTL de 2–5 minutos (configurable via `TOKEN_TTL_SECONDS`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueTokenRequest'
+      responses:
+        '201':
+          description: Token emitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueTokenResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: App Attest o Passkey inválidos
+        '404':
+          description: Nonce no encontrado
+        '409':
+          description: Nonce ya utilizado
+        '410':
+          description: Challenge expirado
+
+  /api/v1/tokens/verify/{nonce}:
+    get:
+      tags: [Tokens]
+      summary: Verificar estado del token (no destructivo)
+      description: |
+        Consulta el estado actual de un token sin consumirlo.
+        El portal hace polling a este endpoint cada 2s para detectar cuando
+        el portador completó el flujo y el token está listo para validar.
+      parameters:
+        - name: nonce
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 64
+            maxLength: 64
+          description: Nonce hexadecimal de 32 bytes (64 caracteres)
+      responses:
+        '200':
+          description: Estado del token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenStatusResponse'
+
+  /api/v1/tokens/validate/{nonce}:
+    post:
+      tags: [Tokens]
+      summary: Validar y consumir token
+      description: |
+        Valida la firma JWT, verifica que la audiencia coincide con el API key
+        del verificador, y marca el token como USED (uso único, anti-replay).
+
+        Solo el verificador que generó el QR puede consumir el token.
+      parameters:
+        - name: nonce
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Token válido y consumido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateTokenResponse'
+        '401':
+          description: API key faltante
+        '403':
+          description: Audiencia no coincide (aud mismatch)
+        '404':
+          description: Token no encontrado
+        '409':
+          description: Token ya consumido (replay attack)
+        '410':
+          description: Token expirado
+
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string, example: 0.1.0 }
+                  ts: { type: string, format: date-time }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key del verificador. Define el claim `aud` del JWT.
+        Cada organización verificadora recibe una clave única.
+
+  schemas:
+    CreateChallengeRequest:
+      type: object
+      required: [verifier_id]
+      properties:
+        verifier_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Identificador del verificador (API key)
+
+    ChallengeResponse:
+      type: object
+      properties:
+        nonce:
+          type: string
+          description: Hex string de 64 chars (32 bytes CSPRNG)
+          example: "a3f8c2..."
+        expires_in:
+          type: integer
+          description: Segundos hasta expiración del challenge
+          example: 600
+        qr_data:
+          type: string
+          description: Contenido del QR (deep link verifia://)
+          example: "verifia://badge?nonce=a3f8c2..."
+        deep_link:
+          type: string
+          description: Deep link para la app móvil
+          example: "verifia://badge?nonce=a3f8c2..."
+        expires_at:
+          type: string
+          format: date-time
+
+    RegisterAttestRequest:
+      type: object
+      required: [attestation_object, client_data_json, challenge]
+      properties:
+        attestation_object:
+          type: string
+          description: CBOR attestation object (base64url)
+        client_data_json:
+          type: string
+          description: Client data JSON (base64url)
+        challenge:
+          type: string
+          description: Nonce de 64 chars usado como challenge
+
+    RegisterAttestResponse:
+      type: object
+      properties:
+        registered:
+          type: boolean
+        device_id:
+          type: string
+          description: Apple Key ID del dispositivo
+
+    PasskeyAssertionPayload:
+      type: object
+      required: [id, raw_id, authenticator_data, client_data_json, signature]
+      properties:
+        id: { type: string }
+        raw_id: { type: string, description: base64url }
+        authenticator_data: { type: string, description: base64url }
+        client_data_json: { type: string, description: base64url }
+        signature: { type: string, description: base64url ECDSA P-256 }
+        user_handle: { type: string }
+
+    IssueTokenRequest:
+      type: object
+      required: [nonce, app_attest_assertion, device_id, facetec_session_id, passkey_assertion]
+      properties:
+        nonce:
+          type: string
+          description: Challenge nonce (64 hex chars)
+        app_attest_assertion:
+          type: string
+          description: CBOR App Attest assertion (base64url)
+        device_id:
+          type: string
+          description: Apple device ID (from App Attest key)
+        facetec_session_id:
+          type: string
+          description: FaceTec session ID from liveness result
+        passkey_assertion:
+          $ref: '#/components/schemas/PasskeyAssertionPayload'
+
+    BadgeDisplay:
+      type: object
+      properties:
+        jti: { type: string }
+        verifier: { type: string }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    IssueTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT ES256 badge token
+        expires_in:
+          type: integer
+          description: TTL en segundos
+          example: 300
+        expires_at:
+          type: string
+          format: date-time
+        badge_display:
+          $ref: '#/components/schemas/BadgeDisplay'
+
+    TokenStatusResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, USED, EXPIRED, REVOKED, NOT_FOUND]
+        exp:
+          type: string
+          format: date-time
+        iat:
+          type: string
+          format: date-time
+
+    ValidateTokenResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        consumed_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    ApiError:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string }
+
+  responses:
+    ValidationError:
+      description: Payload inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: "Invalid request body"
+            code: "VALIDATION_ERROR"
+    RateLimited:
+      description: Demasiadas peticiones
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: "Too many requests, please try again later."
