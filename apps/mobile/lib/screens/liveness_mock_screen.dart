@@ -45,6 +45,7 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
     _camera = MobileScannerController(
       facing: CameraFacing.front,
       detectionSpeed: DetectionSpeed.noDuplicates,
+      autoStart: false,
     );
 
     _progressController = AnimationController(
@@ -59,7 +60,10 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
 
-    // Small delay to let camera initialize before starting progress
+    // Start camera first, then begin the progress bar
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _camera.start();
+    });
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) _progressController.forward();
     });
@@ -110,10 +114,11 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Front camera live preview
+          // Front camera live preview (autoStart disabled — started manually after 200ms)
           MobileScanner(
             controller: _camera,
             fit: BoxFit.cover,
+            onDetect: (_) {}, // required but ignored — not scanning
           ),
 
           // Dark overlay for readability
