@@ -14,13 +14,7 @@ dependencies:
   dio: ^5.7.0
 
   # QR scanner
-  mobile_scanner: ^5.2.3
-
-  # Passkeys (FIDO2 / AuthenticationServices)
-  flutter_passkeys: ^2.0.0
-
-  # Face ID / biometric local auth
-  local_auth: ^2.3.0
+  mobile_scanner: ^7.2.0
 
   # Secure storage (for passkey credential ID, device ID)
   flutter_secure_storage: ^9.2.2

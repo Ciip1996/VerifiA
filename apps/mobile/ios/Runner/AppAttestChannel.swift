@@ -24,9 +24,13 @@ class AppAttestChannel: NSObject {
     static let channelName = "com.verifia.app/app_attest"
 
     static func register(with registrar: FlutterPluginRegistrar) {
+        register(with: registrar.messenger())
+    }
+
+    static func register(with messenger: FlutterBinaryMessenger) {
         let channel = FlutterMethodChannel(
             name: channelName,
-            binaryMessenger: registrar.messenger()
+            binaryMessenger: messenger
         )
         let instance = AppAttestChannel()
         channel.setMethodCallHandler { call, result in

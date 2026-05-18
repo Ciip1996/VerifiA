@@ -14,6 +14,9 @@ out/
 .env.*.local
 *.pem
 
+# Claude Code (local overrides only; commit CLAUDE.md + .claude/settings.json)
+.claude/settings.local.json
+
 # IDE
 .vscode/
 .idea/

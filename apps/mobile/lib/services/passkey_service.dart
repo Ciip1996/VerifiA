@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_passkeys/flutter_passkeys.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
@@ -50,7 +49,7 @@ class PasskeyAssertionPayload {
   };
 }
 
-/// Passkeys service wrapping flutter_passkeys (corbado).
+/// Passkeys service (WebAuthn / Secure Enclave).
 ///
 /// Handles:
 /// - First-time registration (creates ES256 key in Secure Enclave)
@@ -62,8 +61,6 @@ class PasskeyAssertionPayload {
 ///
 /// TODO (Semana 3): Wire up full registration + assertion flow.
 class PasskeyService {
-  final PasskeysPlugin _plugin = PasskeysPlugin();
-
   /// Register a passkey credential on first use.
   /// The credential is stored in the Secure Enclave and synced to iCloud Keychain.
   Future<void> registerIfNeeded({required String userId, required String challenge}) async {

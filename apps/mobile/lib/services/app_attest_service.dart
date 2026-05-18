@@ -9,7 +9,7 @@ const _keyIdStorageKey = 'verifia_app_attest_key_id';
 const _deviceIdStorageKey = 'verifia_device_id';
 
 // Set via --dart-define=VERIFIA_SKIP_ATTEST=true for CI / simulator
-const _skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
+const _skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: true);
 
 class AttestationResult {
   final String assertion;

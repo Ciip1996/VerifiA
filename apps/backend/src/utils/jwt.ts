@@ -4,6 +4,12 @@ import { randomUUID } from 'crypto';
 const TTL = parseInt(process.env.TOKEN_TTL_SECONDS ?? '300', 10);
 const ISSUER = process.env.JWT_ISSUER ?? 'https://api.verifia.dev';
 
+/** .env stores PEM with literal \\n; normalize to real newlines for jose. */
+function loadPem(value: string | undefined, name: string): string {
+  if (!value) throw new Error(`${name} not set`);
+  return value.replace(/\\n/g, '\n');
+}
+
 /**
  * Issue an ES256 JWT badge token.
  */
@@ -13,10 +19,10 @@ export async function issueToken(payload: {
   nonce: string;
   device_id: string;
 }): Promise<{ jwt: string; jti: string; exp: Date }> {
-  const privateKeyPem = process.env.JWT_PRIVATE_KEY_PEM;
-  if (!privateKeyPem) throw new Error('JWT_PRIVATE_KEY_PEM not set');
-
-  const privateKey = await importPKCS8(privateKeyPem, 'ES256');
+  const privateKey = await importPKCS8(
+    loadPem(process.env.JWT_PRIVATE_KEY_PEM, 'JWT_PRIVATE_KEY_PEM'),
+    'ES256'
+  );
   const jti = randomUUID();
   const now = Math.floor(Date.now() / 1000);
   const expTs = now + TTL;
@@ -44,10 +50,10 @@ export async function verifyToken(
   token: string,
   audience: string
 ): Promise<{ jti: string; nonce: string; sub: string; exp: number }> {
-  const publicKeyPem = process.env.JWT_PUBLIC_KEY_PEM;
-  if (!publicKeyPem) throw new Error('JWT_PUBLIC_KEY_PEM not set');
-
-  const publicKey = await importSPKI(publicKeyPem, 'ES256');
+  const publicKey = await importSPKI(
+    loadPem(process.env.JWT_PUBLIC_KEY_PEM, 'JWT_PUBLIC_KEY_PEM'),
+    'ES256'
+  );
   const { payload } = await jwtVerify(token, publicKey, {
     issuer: ISSUER,
     audience,

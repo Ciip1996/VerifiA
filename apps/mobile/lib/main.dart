@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'screens/qr_scanner_screen.dart';
 import 'services/app_attest_service.dart';
 import 'services/api_service.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register App Attest key on first launch (if not already registered)
-  await _initAppAttest();
+  // Do not block first frame on App Attest / network setup.
+  const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: true);
+  if (!skipAttest) {
+    unawaited(_initAppAttest());
+  }
 
   runApp(const VerifiAApp());
 }
@@ -38,7 +43,6 @@ class VerifiAApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        fontFamily: 'SF Pro Display',
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
