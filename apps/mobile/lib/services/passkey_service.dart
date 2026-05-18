@@ -90,7 +90,7 @@ class PasskeyService {
     debugPrint('[Passkeys] Requesting assertion for challenge ${challenge.substring(0, 8)}...');
 
     // Encode nonce as base64url (WebAuthn challenge format)
-    final challengeBase64 = base64Url.encode(utf8.encode(challenge));
+    final challengeBase64 = base64Url.encode(utf8.encode(challenge)).replaceAll('=', '');
 
     // TODO (Semana 3): Replace with real passkey assertion
     // final response = await _plugin.authenticate(
