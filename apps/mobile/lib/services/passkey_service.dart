@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
+
+const _biometricsChannel = MethodChannel('com.verifia.app/biometrics');
 
 const _storage = FlutterSecureStorage();
 const _credentialIdKey = 'verifia_passkey_credential_id';
@@ -108,10 +111,20 @@ class PasskeyService {
     //   userHandle: response.userHandle,
     // );
 
-    debugPrint('[Passkeys] Assertion stub — implement in Semana 3');
+    // Trigger real Face ID / Touch ID before returning stub assertion
+    try {
+      await _biometricsChannel.invokeMethod<bool>('authenticate', {
+        'reason': 'Firma tu presencia con Face ID',
+      });
+    } on PlatformException catch (e) {
+      if (e.code == 'USER_CANCELLED') {
+        throw Exception('Face ID cancelado por el usuario');
+      }
+      // On other errors (e.g. no biometrics) continue anyway — demo mode
+      debugPrint('[Passkeys] Biometrics error (continuing): ${e.message}');
+    }
 
-    // Stub — returns fake assertion with correctly embedded challenge
-    await Future.delayed(const Duration(milliseconds: 800)); // simulate Face ID
+    debugPrint('[Passkeys] Assertion stub — implement in Semana 3');
 
     final fakeClientData = {
       'type': 'webauthn.get',

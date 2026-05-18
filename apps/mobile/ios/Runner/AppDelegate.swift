@@ -13,8 +13,10 @@ import UIKit
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
+        let messenger = engineBridge.applicationRegistrar.messenger()
+        BiometricsChannel.register(with: messenger)
         if #available(iOS 14.0, *) {
-            AppAttestChannel.register(with: engineBridge.applicationRegistrar.messenger())
+            AppAttestChannel.register(with: messenger)
         }
     }
 }
