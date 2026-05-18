@@ -36,11 +36,12 @@ challengesRouter.post('/', async (req, res, next) => {
       },
     });
 
-    const deepLink = `verifia://badge?nonce=${nonce}`;
-    const qrData = deepLink; // QR encodes the deep link
+    const deepLink = `verifia://badge?nonce=${nonce}&verifier=${encodeURIComponent(verifier_id)}`;
+    const qrData = deepLink;
 
     res.status(201).json({
       nonce: challenge.nonce,
+      verifier_id,
       expires_in: ttlSeconds,
       qr_data: qrData,
       deep_link: deepLink,

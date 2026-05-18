@@ -97,10 +97,24 @@ class ApiService {
   Exception _handleDioError(DioException e, String method) {
     if (e.response != null) {
       final data = e.response!.data;
-      final message = (data is Map) ? (data['error'] ?? 'Unknown error') : e.message;
+      final message =
+          (data is Map) ? (data['error'] ?? 'Error del servidor') : e.message;
       final code = (data is Map) ? data['code'] : null;
-      debugPrint('[ApiService] $method error ${e.response!.statusCode}: $message (code: $code)');
+      debugPrint(
+          '[ApiService] $method error ${e.response!.statusCode}: $message (code: $code)');
       return Exception('[$code] $message');
+    }
+    // Network-level error — no response received
+    final type = e.type;
+    if (type == DioExceptionType.connectionTimeout ||
+        type == DioExceptionType.sendTimeout ||
+        type == DioExceptionType.receiveTimeout) {
+      debugPrint('[ApiService] $method timeout');
+      return Exception('Network error: timeout connecting to server');
+    }
+    if (type == DioExceptionType.connectionError) {
+      debugPrint('[ApiService] $method connection error: ${e.message}');
+      return Exception('Network error: no connection to server');
     }
     debugPrint('[ApiService] $method network error: ${e.message}');
     return Exception('Network error: ${e.message}');

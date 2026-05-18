@@ -216,6 +216,12 @@ tokensRouter.post('/validate/:nonce', async (req, res, next) => {
       valid: true,
       consumed_at: consumedAt.toISOString(),
       message: 'Token validated and consumed successfully',
+      badge: {
+        jti: token.jti,
+        verifier: token.aud,
+        issued_at: token.iat.toISOString(),
+        expires_at: token.exp.toISOString(),
+      },
     });
   } catch (err) {
     next(err);

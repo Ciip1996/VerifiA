@@ -3,6 +3,7 @@ const API_KEY = import.meta.env.VITE_VERIFIER_API_KEY ?? '';
 
 export interface ChallengeResponse {
   nonce: string;
+  verifier_id: string;
   expires_in: number;
   qr_data: string;
   deep_link: string;
@@ -16,10 +17,18 @@ export interface TokenStatusResponse {
   iat?: string;
 }
 
+export interface BadgeInfo {
+  jti: string;
+  verifier: string;
+  issued_at: string;
+  expires_at: string;
+}
+
 export interface ValidateResponse {
   valid: boolean;
   consumed_at?: string;
   message: string;
+  badge?: BadgeInfo;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { getTokenStatus, validateToken, type ChallengeResponse } from '../api/client.ts';
+import {
+  getTokenStatus,
+  validateToken,
+  type BadgeInfo,
+  type ChallengeResponse,
+} from '../api/client.ts';
 
 interface Props {
   challenge: ChallengeResponse;
-  onValidated: () => void;
+  onValidated: (badge: BadgeInfo) => void;
   onExpiredOrInvalid: (reason: string) => void;
 }
 
@@ -12,7 +17,7 @@ const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS ?? '2000', 
 
 export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: Props) {
   const [timeLeft, setTimeLeft] = useState<number>(challenge.expires_in);
-  const [status, setStatus] = useState<string>('Esperando escaneo...');
+  const [status, setStatus] = useState<'waiting' | 'scanning' | 'validating'>('waiting');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const consumedRef = useRef(false);
@@ -39,13 +44,12 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
         const res = await getTokenStatus(challenge.nonce);
 
         if (res.valid && res.status === 'ACTIVE') {
-          setStatus('Badge recibido — validando...');
+          setStatus('validating');
           clearInterval(pollRef.current!);
-          // Consume the token
           const validate = await validateToken(challenge.nonce);
           consumedRef.current = true;
-          if (validate.valid) {
-            onValidated();
+          if (validate.valid && validate.badge) {
+            onValidated(validate.badge);
           } else {
             onExpiredOrInvalid('Validación fallida: ' + validate.message);
           }
@@ -55,20 +59,59 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
         } else if (res.status === 'USED') {
           clearInterval(pollRef.current!);
           onExpiredOrInvalid('Token ya fue utilizado (posible replay).');
+        } else if (res.status === 'NOT_FOUND') {
+          // Badge scanned by mobile but not yet issued — keep polling
+          if (status === 'waiting') setStatus('scanning');
         }
       } catch {
-        // Network error — keep polling
+        // Network hiccup — keep polling
       }
     }, POLL_INTERVAL);
 
     return () => clearInterval(pollRef.current!);
-  }, [challenge.nonce, onValidated, onExpiredOrInvalid]);
+  }, [challenge.nonce, onValidated, onExpiredOrInvalid, status]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
+  const pct = timeLeft / challenge.expires_in;
+  const timerColor = pct < 0.2 ? '#ef4444' : pct < 0.4 ? '#f59e0b' : 'var(--color-text)';
+
+  const statusLabel = {
+    waiting: 'Esperando escaneo del QR...',
+    scanning: 'Verificación en curso...',
+    validating: 'Badge recibido — validando...',
+  }[status];
+
+  const statusDotColor = {
+    waiting: 'var(--color-accent)',
+    scanning: '#f59e0b',
+    validating: '#22c55e',
+  }[status];
 
   return (
     <div style={{ textAlign: 'center' }}>
+      {/* Verifier badge */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          background: 'rgba(108,99,255,0.1)',
+          border: '1px solid rgba(108,99,255,0.3)',
+          borderRadius: 20,
+          padding: '0.3rem 0.8rem',
+          marginBottom: '1.25rem',
+          fontSize: '0.8rem',
+          color: '#a8a4ff',
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Verificando para: <strong style={{ color: '#c4c1ff' }}>{challenge.verifier_id}</strong>
+      </div>
+
+      {/* QR Code */}
       <div
         style={{
           background: '#fff',
@@ -76,25 +119,49 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
           borderRadius: 'var(--radius)',
           display: 'inline-block',
           marginBottom: '1.5rem',
+          position: 'relative',
         }}
       >
-        <QRCodeSVG value={challenge.qr_data} size={240} />
+        <QRCodeSVG value={challenge.qr_data} size={220} />
+        {status !== 'waiting' && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(255,255,255,0.85)',
+              borderRadius: 'var(--radius)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: '0.5rem',
+            }}
+          >
+            <div style={{ fontSize: '2.5rem' }}>
+              {status === 'validating' ? '✅' : '📱'}
+            </div>
+            <span style={{ fontSize: '0.8rem', color: '#333', fontWeight: 600 }}>
+              {status === 'validating' ? 'Validando...' : 'Escaneado'}
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* Timer */}
       <div
         style={{
           fontSize: '3rem',
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          color: timeLeft < 60 ? 'var(--color-danger)' : 'var(--color-text)',
+          color: timerColor,
           marginBottom: '0.5rem',
+          transition: 'color 0.3s',
         }}
       >
         {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
       </div>
 
-      <p style={{ color: 'var(--color-muted)', marginBottom: '1rem' }}>{status}</p>
-
+      {/* Status row */}
       <div
         style={{
           display: 'flex',
@@ -102,7 +169,8 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
           justifyContent: 'center',
           gap: '0.5rem',
           color: 'var(--color-muted)',
-          fontSize: '0.85rem',
+          fontSize: '0.875rem',
+          marginBottom: '0.75rem',
         }}
       >
         <span
@@ -110,18 +178,23 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
             width: 8,
             height: 8,
             borderRadius: '50%',
-            background: 'var(--color-accent)',
+            background: statusDotColor,
             display: 'inline-block',
             animation: 'pulse 1.5s infinite',
           }}
         />
-        Verificando en tiempo real
+        {statusLabel}
+      </div>
+
+      {/* Nonce debug */}
+      <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', fontFamily: 'monospace' }}>
+        nonce: {challenge.nonce.slice(0, 12)}…
       </div>
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.85); }
         }
       `}</style>
     </div>

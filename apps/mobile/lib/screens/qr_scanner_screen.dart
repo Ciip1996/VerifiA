@@ -58,8 +58,8 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     final rawValue = barcode.rawValue;
     if (rawValue == null) return;
 
-    final nonce = _extractNonce(rawValue);
-    if (nonce == null) return;
+    final qrData = _extractQRData(rawValue);
+    if (qrData == null) return;
 
     setState(() => _processing = true);
     unawaited(_controller.stop());
@@ -67,7 +67,10 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     Navigator.of(context)
         .push(
           MaterialPageRoute(
-            builder: (_) => PresenceChallengeScreen(nonce: nonce),
+            builder: (_) => PresenceChallengeScreen(
+              nonce: qrData.nonce,
+              verifierId: qrData.verifierId,
+            ),
           ),
         )
         .then((_) {
@@ -77,14 +80,15 @@ class _QRScannerScreenState extends State<QRScannerScreen>
         });
   }
 
-  /// Extracts nonce from verifia://badge?nonce=<hex64>
-  String? _extractNonce(String raw) {
+  /// Parses nonce and verifier_id from verifia://badge?nonce=<hex64>&verifier=<id>
+  ({String nonce, String verifierId})? _extractQRData(String raw) {
     try {
       final uri = Uri.parse(raw);
       if (uri.scheme != 'verifia' || uri.host != 'badge') return null;
       final nonce = uri.queryParameters['nonce'];
       if (nonce == null || nonce.length != 64) return null;
-      return nonce;
+      final verifierId = uri.queryParameters['verifier'] ?? 'Verificador';
+      return (nonce: nonce, verifierId: verifierId);
     } catch (_) {
       return null;
     }

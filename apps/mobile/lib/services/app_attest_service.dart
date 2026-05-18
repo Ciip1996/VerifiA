@@ -8,8 +8,9 @@ const _storage = FlutterSecureStorage();
 const _keyIdStorageKey = 'verifia_app_attest_key_id';
 const _deviceIdStorageKey = 'verifia_device_id';
 
-// Set via --dart-define=VERIFIA_SKIP_ATTEST=true for CI / simulator
-const _skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: true);
+// Set via --dart-define=VERIFIA_SKIP_ATTEST=true for CI / simulator only.
+// Defaults to false — real App Attest runs on physical iPhone (iOS 14+).
+const _skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
 
 class AttestationResult {
   final String assertion;
@@ -68,7 +69,7 @@ class AppAttestService {
   /// Generate a per-request assertion for the given nonce.
   Future<AttestationResult> generateAssertion({required String challenge}) async {
     if (_skipAttest) {
-      return AttestationResult(
+      return const AttestationResult(
         assertion: 'SKIP_ATTEST_ASSERTION',
         deviceId: 'SKIP_ATTEST_DEVICE',
       );

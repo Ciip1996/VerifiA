@@ -4,6 +4,7 @@ import 'dart:convert';
 
 const _storage = FlutterSecureStorage();
 const _credentialIdKey = 'verifia_passkey_credential_id';
+// ignore: unused_element
 const _userIdKey = 'verifia_passkey_user_id';
 
 /// Relying Party configuration for VerifiA Passkeys.
@@ -19,6 +20,7 @@ const _rpId = String.fromEnvironment(
   defaultValue: 'api.verifia.dev',
 );
 
+// ignore: unused_element
 const _rpName = 'VerifiA';
 
 /// Passkey assertion payload matching the backend's PasskeyAssertionPayload interface.
