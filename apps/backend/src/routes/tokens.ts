@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../services/db.js';
 import { AppError } from '../middleware/error-handler.js';
 import { issueToken, verifyToken } from '../utils/jwt.js';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { verifyAppAttestAssertion } from '../services/app-attest.js';
 import { verifyFaceTecSession } from '../services/facetec.js';
 import { verifyPasskeyAssertion } from '../services/passkeys.js';
@@ -14,6 +15,8 @@ const IssueTokenSchema = z.object({
   app_attest_assertion: z.string().min(1),
   device_id: z.string().min(1),
   facetec_session_id: z.string().min(1),
+  facetec_face_scan: z.string().optional(),        // base64 blob from FaceTec SDK
+  facetec_audit_trail_image: z.string().optional(),
   passkey_assertion: z.object({
     id: z.string(),
     raw_id: z.string(),
@@ -36,7 +39,11 @@ tokensRouter.post('/issue', async (req, res, next) => {
       throw new AppError(400, 'Invalid request body', 'VALIDATION_ERROR');
     }
 
-    const { nonce, app_attest_assertion, device_id, facetec_session_id, passkey_assertion } = parsed.data;
+    const {
+      nonce, app_attest_assertion, device_id,
+      facetec_session_id, facetec_face_scan, facetec_audit_trail_image,
+      passkey_assertion,
+    } = parsed.data;
 
     // 1. Validate challenge nonce
     const challenge = await prisma.challenge.findUnique({ where: { nonce } });
@@ -69,11 +76,26 @@ tokensRouter.post('/issue', async (req, res, next) => {
     await verifyFaceTecSession({
       session_id: facetec_session_id,
       nonce,
+      face_scan: facetec_face_scan,
+      audit_trail_image: facetec_audit_trail_image,
     });
 
     // 4. Validate Passkey (FIDO2) assertion
+    // Map the Zod-validated shape into the AuthenticationResponseJSON format
+    const assertionJson: AuthenticationResponseJSON = {
+      id: passkey_assertion.id,
+      rawId: passkey_assertion.raw_id,
+      type: 'public-key',
+      clientExtensionResults: {},
+      response: {
+        clientDataJSON: passkey_assertion.client_data_json,
+        authenticatorData: passkey_assertion.authenticator_data,
+        signature: passkey_assertion.signature,
+        userHandle: passkey_assertion.user_handle,
+      },
+    };
     const passkeyResult = await verifyPasskeyAssertion({
-      assertion: passkey_assertion,
+      assertion: assertionJson,
       challenge: nonce,
     });
 

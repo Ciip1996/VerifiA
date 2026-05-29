@@ -6,7 +6,7 @@ import '../services/passkey_service.dart';
 import '../services/app_attest_service.dart';
 import '../services/api_service.dart';
 import 'badge_screen.dart';
-import 'liveness_mock_screen.dart';
+import 'liveness_screen.dart';
 
 /// Orchestrates the 3-layer verification flow:
 /// 0. Anti-coercion confirmation (TC-U03)
@@ -66,11 +66,15 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
 
   Future<void> _startFlow() async {
     try {
+      // Ensure App Attest key is registered before the flow starts.
+      // Idempotent — no-op if already registered on startup.
+      await _appAttest.registerIfNeeded(_api);
+
       // Step 1: FaceTec 3D liveness — navigate to real camera screen
       setState(() => _step = _FlowStep.facetec);
       final facetecResult = await Navigator.of(context).push<FaceTecResult>(
         MaterialPageRoute(
-          builder: (_) => LivenessMockScreen(nonce: widget.nonce),
+          builder: (_) => LivenessScreen(nonce: widget.nonce),
         ),
       );
 
@@ -81,6 +85,8 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
         return;
       }
       _facetecSessionId = facetecResult.sessionId;
+      final facetecFaceScan = facetecResult.faceScanBase64;
+      final facetecAuditTrail = facetecResult.auditTrailImageBase64;
 
       // Step 2: App Attest assertion
       final attestResult =
@@ -90,6 +96,11 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
 
       // Step 3: Passkey assertion (Face ID gate)
       setState(() => _step = _FlowStep.passkey);
+      // Ensure credential is registered (idempotent — no-op if already done)
+      await _passkeys.registerIfNeeded(
+        userId: _deviceId!,
+        api: _api,
+      );
       final passkeyAssertion =
           await _passkeys.getAssertion(challenge: widget.nonce);
 
@@ -100,6 +111,8 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
         appAttestAssertion: _appAttestAssertion!,
         deviceId: _deviceId!,
         facetecSessionId: _facetecSessionId!,
+        facetecFaceScan: facetecFaceScan,
+        facetecAuditTrailImage: facetecAuditTrail,
         passkeyAssertion: passkeyAssertion,
       );
 

@@ -33,6 +33,8 @@ dev_dependencies:
   mocktail: ^1.0.4
 
 flutter:
+  config:
+    enable-lldb-debugging: false
   uses-material-design: true
   assets:
     - assets/images/

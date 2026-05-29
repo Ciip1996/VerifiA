@@ -62,6 +62,38 @@ model AppAttestKey {
   @@map("app_attest_keys")
 }
 
+// ─── PasskeyCredential ────────────────────────────────────────────────────
+// One row per registered FIDO2 credential.
+// credential_id is the base64url-encoded credentialId from the authenticator.
+// public_key is the COSE-encoded public key bytes (from registration response).
+// sign_count is used for cloning detection (replay protection).
+model PasskeyCredential {
+  id            String   @id @default(cuid())
+  credential_id String   @unique
+  public_key    Bytes
+  sign_count    Int      @default(0)
+  user_id       String   // opaque user identifier (device_id)
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("passkey_credentials")
+}
+
+// ─── PasskeyRegistrationChallenge ─────────────────────────────────────────
+// Short-lived nonce generated for the FIDO2 registration ceremony.
+model PasskeyRegistrationChallenge {
+  id         String   @id @default(cuid())
+  user_id    String   @unique // one in-flight challenge per user
+  challenge  String   @unique
+  exp_time   DateTime
+
+  created_at DateTime @default(now())
+
+  @@map("passkey_registration_challenges")
+}
+
 // ─── AuditLog ─────────────────────────────────────────────────────────────
 // Immutable audit trail for all security-relevant events.
 model AuditLog {

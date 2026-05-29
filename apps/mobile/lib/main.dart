@@ -9,7 +9,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Do not block first frame on App Attest / network setup.
-  const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: true);
+  const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
   if (!skipAttest) {
     unawaited(_initAppAttest());
   }

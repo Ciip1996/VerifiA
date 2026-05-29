@@ -19,37 +19,60 @@ class FaceTecResult {
   });
 }
 
+// ─── FaceTec Flutter SDK integration notes ────────────────────────────────
+//
+// Prerequisites (Fase B):
+//  1. Create Developer Account at https://dev.facetec.com (free)
+//  2. Download Flutter SDK ZIP from the developer console
+//  3. Unzip — you'll get:
+//       FaceTec.xcframework            → copy to apps/mobile/ios/Frameworks/
+//       facetec_flutter/               → Dart package (put in apps/mobile/packages/)
+//       sample_app/                    → reference implementation
+//  4. In apps/mobile/ios/Podfile add:
+//       pod 'FaceTecSDK', :path => 'Frameworks'
+//  5. In apps/mobile/pubspec.yaml add:
+//       facetec_flutter:
+//         path: packages/facetec_flutter
+//  6. In Xcode: Runner target → General → Frameworks → "Embed & Sign" FaceTec.xcframework
+//  7. In apps/backend/.env set FACETEC_DEVICE_KEY_IDENTIFIER and FACETEC_PUBLIC_FHD_KEY
+//
+// Once integrated, replace the stub _runRealSdkSession() implementation below.
+//
+// ─────────────────────────────────────────────────────────────────────────
+
 /// FaceTec 3D liveness service.
 ///
-/// FaceTec provides an official Flutter SDK (XCFramework + Dart wrapper).
-/// Download from: https://dev.facetec.com (free Developer Account)
-///
-/// Setup (Semana 2):
-/// 1. Create Developer Account at dev.facetec.com
-/// 2. Download Flutter SDK (ZoOm Flutter SDK)
-/// 3. Add XCFramework to ios/Frameworks/ and configure Embed & Sign in Xcode
-/// 4. Add facetec_flutter package to pubspec.yaml
-/// 5. Initialize with device key + public face encryption key
-///
-/// The SDK performs all liveness processing on-device. Only the encrypted
-/// FaceScan (mathematical 3D representation) is sent — no video.
-///
-/// TODO (Semana 2): Replace stub with real FaceTec Flutter SDK integration.
+/// When [_sdkAvailable] is false (SDK not wired), runLivenessSession() returns
+/// a stub result so the rest of the flow continues for development.
 class FaceTecService {
   bool _initialized = false;
+
+  // Set to true once the real SDK is linked and initialized.
+  static const bool _sdkAvailable = false;
 
   /// Initialize FaceTec SDK with developer credentials.
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // TODO (Semana 2): Replace with real FaceTec initialization
-    // FaceTecSDK.initializeInDevelopmentMode(
-    //   deviceKeyIdentifier: const String.fromEnvironment('FACETEC_DEVICE_KEY'),
-    //   publicFaceScanEncryptionKey: const String.fromEnvironment('FACETEC_PUBLIC_KEY'),
-    //   onComplete: (success) { ... }
-    // );
+    if (_sdkAvailable) {
+      // ── Real SDK init ──────────────────────────────────────────────────
+      // Uncomment and fill in when SDK is linked:
+      //
+      // await FaceTecSDK.initializeInDevelopmentMode(
+      //   deviceKeyIdentifier: const String.fromEnvironment('FACETEC_DEVICE_KEY'),
+      //   publicFaceScanEncryptionKey: const String.fromEnvironment('FACETEC_PUBLIC_KEY'),
+      // );
+      //
+      // OR for production:
+      // await FaceTecSDK.initializeInProductionMode(
+      //   productionKeyText: const String.fromEnvironment('FACETEC_PRODUCTION_KEY'),
+      //   deviceKeyIdentifier: const String.fromEnvironment('FACETEC_DEVICE_KEY'),
+      //   publicFaceScanEncryptionKey: const String.fromEnvironment('FACETEC_PUBLIC_KEY'),
+      // );
+    } else {
+      debugPrint('[FaceTec] SDK not linked — running in stub mode');
+    }
 
-    debugPrint('[FaceTec] SDK initialization stub — implement in Semana 2');
     _initialized = true;
   }
 
@@ -62,25 +85,38 @@ class FaceTecService {
   Future<FaceTecResult> runLivenessSession({required String nonce}) async {
     await initialize();
 
-    // TODO (Semana 2): Replace with real FaceTec session
-    // final session = FaceTecSession(
-    //   sessionProcessor: VerifiAFaceTecProcessor(nonce: nonce),
-    // );
-    // await session.launch();
-    // return FaceTecResult(
-    //   sessionId: session.sessionId,
-    //   faceScanBase64: session.faceScan,
-    //   auditTrailImageBase64: session.auditTrailImage,
-    // );
+    if (_sdkAvailable) {
+      return _runRealSdkSession(nonce);
+    }
 
-    debugPrint('[FaceTec] Running liveness stub for nonce ${nonce.substring(0, 8)}...');
-
-    // Stub — returns fake session ID
-    // Will be replaced with real SDK call in Semana 2
-    await Future.delayed(const Duration(seconds: 2)); // simulate processing
+    // Dev stub — returns deterministic fake data so backend dev-mode accepts it
+    debugPrint('[FaceTec] Stub session for nonce ${nonce.substring(0, 8)}...');
+    await Future.delayed(const Duration(seconds: 2));
     return FaceTecResult(
       sessionId: 'stub-session-${nonce.substring(0, 16)}',
-      faceScanBase64: 'STUB_FACE_SCAN_BASE64',
+      faceScanBase64: 'STUB_FACE_SCAN',
     );
+  }
+
+  /// Real FaceTec SDK session — wired once SDK is linked.
+  ///
+  /// VerifiAFaceTecProcessor handles the upload-and-verify handshake:
+  ///   processSessionResultWhileFaceTecIsInForeground → POST /api/v1/tokens/issue
+  ///   (see FaceTec server-side API guide for the full processor pattern)
+  Future<FaceTecResult> _runRealSdkSession(String nonce) async {
+    // ── Replace with real SDK call ─────────────────────────────────────
+    //
+    // final processor = VerifiAFaceTecProcessor(nonce: nonce);
+    // await FaceTecSDK.startSession(processor);
+    // final result = await processor.resultCompleter.future;
+    //
+    // return FaceTecResult(
+    //   sessionId: result.sessionId,
+    //   faceScanBase64: result.faceScan,
+    //   auditTrailImageBase64: result.auditTrailImage,
+    // );
+    //
+    // ─────────────────────────────────────────────────────────────────
+    throw UnimplementedError('FaceTec SDK not yet linked — set _sdkAvailable = true');
   }
 }

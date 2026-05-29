@@ -7,6 +7,7 @@ import { rateLimit } from 'express-rate-limit';
 import { challengesRouter } from './routes/challenges.js';
 import { appAttestRouter } from './routes/app-attest.js';
 import { tokensRouter } from './routes/tokens.js';
+import { passkeysRouter } from './routes/passkeys.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 const app = express();
@@ -40,10 +41,25 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: '0.1.0', ts: new Date().toISOString() });
 });
 
+// ─── Apple App Site Association (required for Passkeys Associated Domains) ─
+// Served at /.well-known/apple-app-site-association
+// iOS reads this to authorize the app to create passkeys for this RP ID.
+app.get('/.well-known/apple-app-site-association', (_req, res) => {
+  const teamId = process.env.APPLE_TEAM_ID ?? 'TEAMID';
+  const bundleId = process.env.APPLE_BUNDLE_ID ?? 'com.verifia.mobile';
+  res.setHeader('Content-Type', 'application/json');
+  res.json({
+    webcredentials: {
+      apps: [`${teamId}.${bundleId}`],
+    },
+  });
+});
+
 // ─── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/v1/challenges', challengesRouter);
 app.use('/api/v1/app-attest', appAttestRouter);
 app.use('/api/v1/tokens', tokensRouter);
+app.use('/api/v1/passkeys', passkeysRouter);
 
 // ─── 404 ───────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

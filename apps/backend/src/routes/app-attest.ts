@@ -3,8 +3,33 @@ import { z } from 'zod';
 import { prisma } from '../services/db.js';
 import { AppError } from '../middleware/error-handler.js';
 import { verifyAppAttest } from '../services/app-attest.js';
+import { generateNonce } from '../utils/crypto.js';
 
 export const appAttestRouter = Router();
+
+/**
+ * GET /api/v1/app-attest/challenge
+ * Returns a fresh 32-byte hex nonce for App Attest key registration.
+ * The nonce is stored temporarily so the backend can verify it during /register.
+ * TTL: 5 minutes.
+ */
+appAttestRouter.get('/challenge', async (_req, res, next) => {
+  try {
+    const challenge = generateNonce();
+    // Persist temporarily — reuse the Challenge table with a synthetic verifier_id
+    await prisma.challenge.create({
+      data: {
+        nonce: challenge,
+        verifier_id: '__attest_registration__',
+        exp_time: new Date(Date.now() + 5 * 60 * 1000),
+        status: 'PENDING',
+      },
+    });
+    res.json({ challenge });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const RegisterSchema = z.object({
   attestation_object: z.string().min(1), // base64url

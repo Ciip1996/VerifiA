@@ -3,47 +3,83 @@ import { AppError } from '../middleware/error-handler.js';
 interface FaceTecVerifyInput {
   session_id: string;
   nonce: string;
+  face_scan?: string;           // base64 encrypted FaceScan blob from SDK
+  audit_trail_image?: string;   // base64 from SDK (optional but improves score)
 }
+
+interface FaceTecApiResponse {
+  success: boolean;
+  livenessStatus?: string;      // "LIVENESS_DETERMINED" on success
+  sessionId?: string;
+  error?: string;
+}
+
+const FACETEC_BASE_URL = process.env.FACETEC_BASE_URL ?? '';
+const FACETEC_DEVICE_KEY = process.env.FACETEC_DEVICE_KEY_IDENTIFIER ?? '';
+const FACETEC_PUBLIC_FHD_KEY = process.env.FACETEC_PUBLIC_FHD_KEY ?? '';
 
 /**
  * Verify a FaceTec liveness session via FaceTec Managed Testing API.
  *
- * FaceTec Developer Account (free) provides access to the Managed Testing API
- * at https://api.facetec.com/api/v3.1/biometric-console
+ * When FACETEC_DEVICE_KEY is "dev" or not configured, verification is bypassed
+ * (dev / simulator mode). In production the SDK sends an encrypted FaceScan
+ * to this backend which forwards it to FaceTec's servers.
  *
- * The app SDK sends the encrypted FaceScan (3D mathematical representation)
- * to FaceTec's servers. We verify server-side that the session passed liveness.
- *
- * API endpoint: POST /liveness-3d
- * Required headers: X-Device-Key, X-User-Agent
- * Body: { faceScan, auditTrailImage, lowQualityAuditTrailImage, sessionId }
- *
- * Success response includes: { success: true, livenessStatus: "LIVENESS_DETERMINED" }
- *
- * TODO (Semana 2): Implement full FaceTec server-side verification call.
- * Reference: https://dev.facetec.com/server-side-api-guide
+ * FaceTec Managed Testing API: POST /liveness-3d
+ * Headers: X-Device-Key, X-Public-FaceScan-Encryption-Key, Content-Type
+ * Body: { faceScan, sessionId, auditTrailImage?, lowQualityAuditTrailImage? }
+ * Success: { success: true, livenessStatus: "LIVENESS_DETERMINED", sessionId }
  */
 export async function verifyFaceTecSession(input: FaceTecVerifyInput): Promise<void> {
-  const { session_id } = input;
+  const { session_id, face_scan, audit_trail_image } = input;
 
   if (!session_id) {
     throw new AppError(400, 'Missing FaceTec session ID', 'FACETEC_SESSION_MISSING');
   }
 
-  const baseUrl = process.env.FACETEC_BASE_URL;
-  const deviceKey = process.env.FACETEC_DEVICE_KEY_IDENTIFIER;
-
-  if (!baseUrl || !deviceKey) {
-    // In dev without FaceTec credentials, skip verification
-    console.warn('[FaceTec] Credentials not configured — skipping verification (dev mode)');
+  // Dev / simulator bypass — no FaceTec credentials configured
+  const isDev = !FACETEC_BASE_URL || FACETEC_DEVICE_KEY === 'dev' || !FACETEC_DEVICE_KEY;
+  if (isDev) {
+    console.warn('[FaceTec] Dev mode — skipping liveness verification');
     return;
   }
 
-  // TODO (Semana 2): Implement actual API call to FaceTec Managed Testing API
-  // The full implementation should:
-  // 1. POST to {FACETEC_BASE_URL}/liveness-3d with session data
-  // 2. Verify response.success === true
-  // 3. Verify response.livenessStatus === 'LIVENESS_DETERMINED'
-  // 4. Verify response.sessionId matches our session_id
-  console.warn('[FaceTec] Server-side verification not yet implemented — Semana 2 task');
+  if (!face_scan) {
+    throw new AppError(400, 'Missing FaceScan blob — SDK must supply face_scan', 'FACETEC_SCAN_MISSING');
+  }
+
+  let data: FaceTecApiResponse;
+  try {
+    const resp = await fetch(`${FACETEC_BASE_URL}/liveness-3d`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Device-Key': FACETEC_DEVICE_KEY,
+        'X-Public-FaceScan-Encryption-Key': FACETEC_PUBLIC_FHD_KEY,
+      },
+      body: JSON.stringify({
+        faceScan: face_scan,
+        sessionId: session_id,
+        ...(audit_trail_image ? { auditTrailImage: audit_trail_image } : {}),
+      }),
+    });
+
+    data = (await resp.json()) as FaceTecApiResponse;
+
+    if (!resp.ok) {
+      console.error('[FaceTec] API error:', data);
+      throw new AppError(502, 'FaceTec API error', 'FACETEC_API_ERROR');
+    }
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError(502, 'FaceTec request failed', 'FACETEC_REQUEST_FAILED');
+  }
+
+  if (!data.success || data.livenessStatus !== 'LIVENESS_DETERMINED') {
+    throw new AppError(401, `Liveness check failed: ${data.livenessStatus ?? 'unknown'}`, 'LIVENESS_FAILED');
+  }
+
+  if (data.sessionId && data.sessionId !== session_id) {
+    throw new AppError(401, 'FaceTec session ID mismatch', 'FACETEC_SESSION_MISMATCH');
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,9 +43,15 @@ class AppAttestService {
       return;
     }
 
-    // Generate a temporary challenge for registration
-    // In production, fetch a real challenge from the backend first
-    final regChallenge = _generateLocalChallenge();
+    // Fetch a server-issued registration challenge so Apple can bind the
+    // attestation to a nonce the backend can verify.
+    String regChallenge;
+    try {
+      regChallenge = await api.fetchAttestChallenge();
+    } catch (e) {
+      debugPrint('[AppAttest] Could not fetch registration challenge: $e — using local fallback');
+      regChallenge = _generateLocalChallenge();
+    }
 
     // Generate key in Secure Enclave
     final keyId = await _generateKey();
@@ -135,11 +142,11 @@ class AppAttestService {
     }
   }
 
-  /// Generate a random 32-byte hex string for registration challenges.
+  /// Generate a cryptographically random 32-byte hex challenge (local fallback).
+  /// The primary path fetches a server-issued nonce via fetchAttestChallenge().
   String _generateLocalChallenge() {
-    // Uses Dart's built-in random (good enough for local challenge generation)
-    // In Semana 2: fetch real challenge from /api/v1/challenges endpoint
-    final bytes = List<int>.generate(32, (i) => (i * 17 + 113) % 256); // placeholder
+    final rng = Random.secure();
+    final bytes = List<int>.generate(32, (_) => rng.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 

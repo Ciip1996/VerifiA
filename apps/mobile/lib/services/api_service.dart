@@ -54,6 +54,17 @@ class ApiService {
     }
   }
 
+  /// Fetch a one-time registration challenge for App Attest key attestation.
+  /// Returns the 32-byte hex nonce.
+  Future<String> fetchAttestChallenge() async {
+    try {
+      final response = await _dio.get('/api/v1/app-attest/challenge');
+      return (response.data as Map<String, dynamic>)['challenge'] as String;
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'fetchAttestChallenge');
+    }
+  }
+
   /// Register an App Attest attestation object with the backend.
   Future<Map<String, dynamic>> registerAppAttest({
     required String attestationObject,
@@ -79,6 +90,8 @@ class ApiService {
     required String deviceId,
     required String facetecSessionId,
     required PasskeyAssertionPayload passkeyAssertion,
+    String? facetecFaceScan,
+    String? facetecAuditTrailImage,
   }) async {
     try {
       final response = await _dio.post('/api/v1/tokens/issue', data: {
@@ -86,11 +99,42 @@ class ApiService {
         'app_attest_assertion': appAttestAssertion,
         'device_id': deviceId,
         'facetec_session_id': facetecSessionId,
+        if (facetecFaceScan != null) 'facetec_face_scan': facetecFaceScan,
+        if (facetecAuditTrailImage != null) 'facetec_audit_trail_image': facetecAuditTrailImage,
         'passkey_assertion': passkeyAssertion.toJson(),
       });
       return IssueTokenResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _handleDioError(e, 'issueToken');
+    }
+  }
+
+  /// Fetch FIDO2 registration options (challenge + RP config) for a given user.
+  Future<Map<String, dynamic>> getPasskeyRegistrationOptions({
+    required String userId,
+  }) async {
+    try {
+      final response = await _dio.post('/api/v1/passkeys/register/options', data: {
+        'user_id': userId,
+      });
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'getPasskeyRegistrationOptions');
+    }
+  }
+
+  /// Verify passkey registration response with the backend.
+  Future<void> verifyPasskeyRegistration({
+    required String userId,
+    required Map<String, dynamic> response,
+  }) async {
+    try {
+      await _dio.post('/api/v1/passkeys/register/verify', data: {
+        'user_id': userId,
+        'response': response,
+      });
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'verifyPasskeyRegistration');
     }
   }
 
