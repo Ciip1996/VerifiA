@@ -1,6 +1,8 @@
+import AudioToolbox
 import Flutter
 import Foundation
 import LocalAuthentication
+import UIKit
 
 /// MethodChannel bridge for Face ID / Touch ID authentication.
 ///
@@ -28,8 +30,29 @@ class BiometricsChannel: NSObject {
             let reason = (call.arguments as? [String: Any])?["reason"] as? String
                 ?? "Confirma tu identidad para firmar el badge"
             handleAuthenticate(reason: reason, result: result)
+        case "playSuccess":
+            handlePlaySuccess(result: result)
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func handlePlaySuccess(result: @escaping FlutterResult) {
+        DispatchQueue.main.async {
+            // Taptic Engine "success" pattern — works even in silent mode
+            let haptic = UINotificationFeedbackGenerator()
+            haptic.prepare()
+            haptic.notificationOccurred(.success)
+
+            // "Glass" chime (system sound 1109) at alert volume — plays alongside haptic
+            AudioServicesPlayAlertSoundWithCompletion(1109, nil)
+
+            // Force-vibrate via AudioServices so it fires even if Taptic is subtle
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+            }
+
+            result(true)
         }
     }
 

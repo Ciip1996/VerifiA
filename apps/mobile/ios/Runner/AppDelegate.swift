@@ -16,6 +16,7 @@ import UIKit
         let messenger = engineBridge.applicationRegistrar.messenger()
         BiometricsChannel.register(with: messenger)
         LivenessChannel.register(with: messenger)
+        FaceTecChannel.register(with: messenger)
         if #available(iOS 14.0, *) {
             AppAttestChannel.register(with: messenger)
         }

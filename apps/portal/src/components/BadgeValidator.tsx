@@ -18,9 +18,17 @@ const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS ?? '2000', 
 export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: Props) {
   const [timeLeft, setTimeLeft] = useState<number>(challenge.expires_in);
   const [status, setStatus] = useState<'waiting' | 'scanning' | 'validating'>('waiting');
+  const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const consumedRef = useRef(false);
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(challenge.qr_data).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   // Countdown
   useEffect(() => {
@@ -59,10 +67,8 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
         } else if (res.status === 'USED') {
           clearInterval(pollRef.current!);
           onExpiredOrInvalid('Token ya fue utilizado (posible replay).');
-        } else if (res.status === 'NOT_FOUND') {
-          // Badge scanned by mobile but not yet issued — keep polling
-          if (status === 'waiting') setStatus('scanning');
         }
+        // NOT_FOUND: no token yet — stay in waiting state, keep polling
       } catch {
         // Network hiccup — keep polling
       }
@@ -187,9 +193,61 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
       </div>
 
       {/* Nonce debug */}
-      <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', fontFamily: 'monospace' }}>
+      <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', fontFamily: 'monospace', marginBottom: '1.25rem' }}>
         nonce: {challenge.nonce.slice(0, 12)}…
       </div>
+
+      {/* Share link */}
+      {status === 'waiting' && (
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 10,
+            padding: '0.85rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginBottom: '0.2rem' }}>
+              ¿Sin acceso al QR? Comparte el link:
+            </div>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                fontFamily: 'monospace',
+                color: 'var(--color-text)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                opacity: 0.7,
+              }}
+            >
+              {challenge.qr_data.slice(0, 48)}…
+            </div>
+          </div>
+          <button
+            onClick={handleCopyLink}
+            style={{
+              padding: '0.5rem 1rem',
+              background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(108,99,255,0.15)',
+              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(108,99,255,0.4)'}`,
+              borderRadius: 8,
+              color: copied ? '#22c55e' : '#a8a4ff',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              flexShrink: 0,
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {copied ? '✓ Copiado' : '📋 Copiar link'}
+          </button>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse {

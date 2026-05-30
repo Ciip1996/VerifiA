@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/facetec_service.dart';
 import '../services/passkey_service.dart';
 import '../services/app_attest_service.dart';
@@ -31,7 +32,7 @@ class PresenceChallengeScreen extends StatefulWidget {
 
 enum _Phase { confirm, flow, done, error }
 
-enum _FlowStep { idle, facetec, passkey, issuing, done }
+enum _FlowStep { idle, liveness, facetec, passkey, issuing, done }
 
 class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   _Phase _phase = _Phase.confirm;
@@ -70,20 +71,32 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
       // Idempotent — no-op if already registered on startup.
       await _appAttest.registerIfNeeded(_api);
 
-      // Step 1: FaceTec 3D liveness — navigate to real camera screen
-      setState(() => _step = _FlowStep.facetec);
-      final facetecResult = await Navigator.of(context).push<FaceTecResult>(
-        MaterialPageRoute(
-          builder: (_) => LivenessScreen(nonce: widget.nonce),
-        ),
+      // Step 1: ML Kit liveness — head-turn challenge (our custom Flutter screen)
+      setState(() => _step = _FlowStep.liveness);
+      final mlKitResult = await Navigator.of(context).push<FaceTecResult>(
+        MaterialPageRoute(builder: (_) => LivenessScreen(nonce: widget.nonce)),
       );
-
       if (!mounted) return;
-      if (facetecResult == null) {
-        // User cancelled liveness
+      if (mlKitResult == null) {
         Navigator.of(context).pop();
         return;
       }
+
+      // Step 2: FaceTec 3D liveness — native SDK presents its own full-screen UI
+      setState(() => _step = _FlowStep.facetec);
+      final FaceTecResult facetecResult;
+      try {
+        facetecResult = await FaceTecService().runLivenessSession(nonce: widget.nonce);
+      } on PlatformException catch (e) {
+        if (!mounted) return;
+        if (e.code == 'LIVENESS_CANCELLED') {
+          Navigator.of(context).pop();
+          return;
+        }
+        rethrow;
+      }
+
+      if (!mounted) return;
       _facetecSessionId = facetecResult.sessionId;
       final facetecFaceScan = facetecResult.faceScanBase64;
       final facetecAuditTrail = facetecResult.auditTrailImageBase64;
@@ -293,18 +306,24 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                   children: [
                     _buildStep(
                       '1',
-                      'Verificación facial 3D',
-                      'Confirma tu presencia física',
+                      'Liveness check',
+                      'Giro de cabeza para confirmar presencia',
                     ),
                     const SizedBox(height: 10),
                     _buildStep(
                       '2',
+                      'FaceTec 3D',
+                      'Verificación facial anti-spoofing de nivel industrial',
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStep(
+                      '3',
                       'Autorización Face ID',
                       'Firma criptográfica con Secure Enclave',
                     ),
                     const SizedBox(height: 10),
                     _buildStep(
-                      '3',
+                      '4',
                       'Badge de presencia',
                       'JWT efímero válido por 5 minutos',
                     ),
@@ -420,9 +439,10 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
 
   Widget _buildStepIndicator() {
     final steps = [
-      ('Liveness 3D', _FlowStep.facetec),
+      ('Liveness', _FlowStep.liveness),
+      ('FaceTec 3D', _FlowStep.facetec),
       ('Face ID', _FlowStep.passkey),
-      ('Emitiendo badge', _FlowStep.issuing),
+      ('Badge', _FlowStep.issuing),
     ];
 
     return Row(
@@ -497,10 +517,9 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   Widget _buildStatus() {
     final messages = {
       _FlowStep.idle: 'Iniciando...',
-      _FlowStep.facetec:
-          'Verificación facial completada\nProcesando...',
-      _FlowStep.passkey:
-          'Autoriza con Face ID\npara firmar el badge',
+      _FlowStep.liveness: 'Gira la cabeza para confirmar\nque eres una persona real',
+      _FlowStep.facetec: 'Verificación 3D con FaceTec\nColoca tu cara en el óvalo',
+      _FlowStep.passkey: 'Autoriza con Face ID\npara firmar el badge',
       _FlowStep.issuing: 'Emitiendo badge de presencia...',
       _FlowStep.done: '¡Badge emitido!',
     };
