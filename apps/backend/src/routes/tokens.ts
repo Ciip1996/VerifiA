@@ -17,6 +17,7 @@ const IssueTokenSchema = z.object({
   facetec_session_id: z.string().min(1),
   facetec_face_scan: z.string().optional(),        // base64 blob from FaceTec SDK
   facetec_audit_trail_image: z.string().optional(),
+  liveness_match_score: z.number().int().min(0).max(100).nullable().optional(),
   passkey_assertion: z.object({
     id: z.string(),
     raw_id: z.string(),
@@ -42,6 +43,7 @@ tokensRouter.post('/issue', async (req, res, next) => {
     const {
       nonce, app_attest_assertion, device_id,
       facetec_session_id, facetec_face_scan, facetec_audit_trail_image,
+      liveness_match_score,
       passkey_assertion,
     } = parsed.data;
 
@@ -99,13 +101,35 @@ tokensRouter.post('/issue', async (req, res, next) => {
       challenge: nonce,
     });
 
-    // 5. Mark challenge as USED
+    // 5. FaceTec 3D-3D score threshold check — reject if too low
+    const minScore = parseInt(process.env.FACETEC_MIN_MATCH_SCORE ?? '40', 10);
+    if (liveness_match_score !== null && liveness_match_score !== undefined
+        && liveness_match_score < minScore) {
+      await prisma.challenge.update({
+        where: { nonce },
+        data: {
+          status: 'REJECTED',
+          rejection_reason: `FaceTec 3D match score too low: ${liveness_match_score}/100 (mínimo requerido: ${minScore}/100)`,
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          action: 'TOKEN_REJECTED',
+          device_id,
+          result: 'FAILURE',
+          metadata: { reason: 'FACETEC_SCORE_BELOW_THRESHOLD', score: liveness_match_score, min_score: minScore },
+        },
+      });
+      throw new AppError(422, 'Face match score below threshold — verification rejected', 'FACETEC_SCORE_REJECTED');
+    }
+
+    // 6. Mark challenge as USED
     await prisma.challenge.update({
       where: { nonce },
       data: { status: 'USED' },
     });
 
-    // 6. Issue JWT ES256 token
+    // 8. Issue JWT ES256 token
     const { jwt, jti, exp } = await issueToken({
       sub: passkeyResult.userId,
       aud: challenge.verifier_id,
@@ -113,7 +137,7 @@ tokensRouter.post('/issue', async (req, res, next) => {
       device_id,
     });
 
-    // 7. Persist token record
+    // 9. Persist token record (including identity link + liveness snapshot + 3D-3D score)
     await prisma.token.create({
       data: {
         jti,
@@ -122,10 +146,13 @@ tokensRouter.post('/issue', async (req, res, next) => {
         exp,
         status: 'ACTIVE',
         jwt_raw: jwt,
+        device_id,
+        liveness_snapshot: facetec_audit_trail_image ?? facetec_face_scan ?? null,
+        liveness_match_score: liveness_match_score ?? null,
       },
     });
 
-    // 8. Audit log
+    // 10. Audit log
     await prisma.auditLog.create({
       data: {
         action: 'TOKEN_ISSUED',
@@ -161,6 +188,23 @@ tokensRouter.post('/issue', async (req, res, next) => {
 tokensRouter.get('/verify/:nonce', async (req, res, next) => {
   try {
     const { nonce } = req.params;
+
+    // First check if the challenge itself was rejected (FaceTec score below threshold)
+    const challenge = await prisma.challenge.findUnique({ where: { nonce } });
+    if (challenge?.status === 'REJECTED') {
+      res.json({
+        valid: false,
+        status: 'REJECTED',
+        rejection_reason: challenge.rejection_reason,
+      });
+      return;
+    }
+
+    // Check if challenge expired with no token
+    if (challenge && challenge.status === 'PENDING' && challenge.exp_time < new Date()) {
+      res.json({ valid: false, status: 'EXPIRED' });
+      return;
+    }
 
     const token = await prisma.token.findUnique({ where: { nonce } });
     if (!token) {
@@ -234,6 +278,28 @@ tokensRouter.post('/validate/:nonce', async (req, res, next) => {
       },
     });
 
+    // Look up user identity profile if token has a device_id
+    let identity = null;
+    if (token.device_id) {
+      const profile = await prisma.userProfile.findUnique({
+        where: { device_id: token.device_id },
+      });
+      if (profile) {
+        identity = {
+          full_name: profile.full_name,
+          curp: profile.curp,
+          date_of_birth: profile.date_of_birth,
+          id_type: profile.id_type,
+          profile_photo: profile.profile_photo,
+          id_front_photo: profile.id_front_photo,
+          id_back_photo: profile.id_back_photo,
+          facetec_match_level: profile.facetec_match_level,
+          liveness_snapshot: token.liveness_snapshot,
+          liveness_match_score: token.liveness_match_score,
+        };
+      }
+    }
+
     res.json({
       valid: true,
       consumed_at: consumedAt.toISOString(),
@@ -244,6 +310,7 @@ tokensRouter.post('/validate/:nonce', async (req, res, next) => {
         issued_at: token.iat.toISOString(),
         expires_at: token.exp.toISOString(),
       },
+      identity,
     });
   } catch (err) {
     next(err);

@@ -8,6 +8,9 @@ import { challengesRouter } from './routes/challenges.js';
 import { appAttestRouter } from './routes/app-attest.js';
 import { tokensRouter } from './routes/tokens.js';
 import { passkeysRouter } from './routes/passkeys.js';
+import { profilesRouter } from './routes/profiles.js';
+import { authRouter } from './routes/auth.js';
+import { accountsRouter } from './routes/accounts.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 const app = express();
@@ -34,7 +37,7 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '20mb' }));
 
 // ─── Health check ──────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
@@ -56,10 +59,13 @@ app.get('/.well-known/apple-app-site-association', (_req, res) => {
 });
 
 // ─── Routes ────────────────────────────────────────────────────────────────
+app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/challenges', challengesRouter);
 app.use('/api/v1/app-attest', appAttestRouter);
 app.use('/api/v1/tokens', tokensRouter);
 app.use('/api/v1/passkeys', passkeysRouter);
+app.use('/api/v1/profile', profilesRouter);
+app.use('/api/v1/accounts', accountsRouter);
 
 // ─── 404 ───────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

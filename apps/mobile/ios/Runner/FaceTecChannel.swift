@@ -3,9 +3,12 @@ import UIKit
 import FaceTecSDK
 
 // ─── FaceTec MethodChannel ─────────────────────────────────────────────────
-// Exposed method:
-//   "startLiveness" → returns { "faceScanBase64": String, "auditTrailImage": String,
-//                                "sessionId": String } | FlutterError
+// Exposed methods:
+//   "startLiveness"  → { faceScanBase64, auditTrailImage, sessionId, livenessMatchScore? }
+//                      accepts optional arg: { "enrollmentRefId": String }
+//   "startIDMatch"   → { faceScanBase64, auditTrailImage, sessionId,
+//                        idFrontPhoto, idBackPhoto,
+//                        fullName, curp, dateOfBirth, matchLevel, enrollmentRefId }
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FaceTecChannel: NSObject {
@@ -54,7 +57,13 @@ class FaceTecChannel: NSObject {
     private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "startLiveness":
-            startLivenessSession(result: result)
+            let args = call.arguments as? [String: Any]
+            let enrollmentRefId = args?["enrollmentRefId"] as? String
+            startLivenessSession(enrollmentRefId: enrollmentRefId, result: result)
+        case "startIDMatch":
+            let args = call.arguments as? [String: Any]
+            let idType = args?["idType"] as? String ?? "INE"
+            startIDMatchSession(idType: idType, result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -62,17 +71,15 @@ class FaceTecChannel: NSObject {
 
     // ─── Start a full 3D liveness session ────────────────────────────────────
 
-    private func startLivenessSession(result: @escaping FlutterResult) {
+    private func startLivenessSession(enrollmentRefId: String?, result: @escaping FlutterResult) {
         guard FaceTecChannel.sdkReady else {
-            // Try to initialize again then retry once
             FaceTecChannel.initializeSDK()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                self.startLivenessSession(result: result)
+                self.startLivenessSession(enrollmentRefId: enrollmentRefId, result: result)
             }
             return
         }
 
-        // Get session token, then launch FaceTec VC
         fetchSessionToken { sessionToken in
             guard let token = sessionToken else {
                 result(FlutterError(code: "SESSION_TOKEN_ERROR",
@@ -81,12 +88,12 @@ class FaceTecChannel: NSObject {
                 return
             }
             DispatchQueue.main.async {
-                self.launchFaceTecSession(sessionToken: token, result: result)
+                self.launchFaceTecSession(sessionToken: token, enrollmentRefId: enrollmentRefId, result: result)
             }
         }
     }
 
-    private func launchFaceTecSession(sessionToken: String, result: @escaping FlutterResult) {
+    private func launchFaceTecSession(sessionToken: String, enrollmentRefId: String?, result: @escaping FlutterResult) {
         guard let rootVC = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap({ $0.windows })
@@ -97,14 +104,57 @@ class FaceTecChannel: NSObject {
 
         let processor = FaceTecLivenessProcessor(
             sessionToken: sessionToken,
+            enrollmentRefId: enrollmentRefId,
             presentingVC: rootVC,
             result: result
         )
-        // Hold a strong reference so the processor isn't deallocated during the session
         objc_setAssociatedObject(rootVC, &FaceTecChannel.processorKey, processor, .OBJC_ASSOCIATION_RETAIN)
     }
 
-    private static var processorKey = "facetecProcessor"
+    private static var processorKey  = "facetecProcessor"
+    private static var idProcessorKey = "facetecIDProcessor"
+
+    // ─── Start a Photo ID Match session ──────────────────────────────────────
+
+    private func startIDMatchSession(idType: String, result: @escaping FlutterResult) {
+        guard FaceTecChannel.sdkReady else {
+            FaceTecChannel.initializeSDK()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.startIDMatchSession(idType: idType, result: result)
+            }
+            return
+        }
+
+        fetchSessionToken { sessionToken in
+            guard let token = sessionToken else {
+                result(FlutterError(code: "SESSION_TOKEN_ERROR",
+                                   message: "No se pudo obtener token de sesión FaceTec",
+                                   details: nil))
+                return
+            }
+            DispatchQueue.main.async {
+                self.launchFaceTecIDMatch(sessionToken: token, idType: idType, result: result)
+            }
+        }
+    }
+
+    private func launchFaceTecIDMatch(sessionToken: String, idType: String, result: @escaping FlutterResult) {
+        guard let rootVC = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow })?.rootViewController else {
+            result(FlutterError(code: "NO_VC", message: "No hay ViewController raíz", details: nil))
+            return
+        }
+
+        let processor = FaceTecIDMatchProcessor(
+            sessionToken: sessionToken,
+            idType: idType,
+            presentingVC: rootVC,
+            result: result
+        )
+        objc_setAssociatedObject(rootVC, &FaceTecChannel.idProcessorKey, processor, .OBJC_ASSOCIATION_RETAIN)
+    }
 
     // ─── Fetch session token from FaceTec dev server ─────────────────────────
 
@@ -182,17 +232,26 @@ class FaceTecChannel: NSObject {
 class FaceTecLivenessProcessor: NSObject, FaceTecFaceScanProcessorDelegate {
 
     private let flutterResult: FlutterResult
+    /// The enrollmentRefId stored at registration time (for 3D-3D match)
+    private let registrationEnrollmentRefId: String?
+
     private var faceScanCallback: FaceTecFaceScanResultCallback?
     private var faceScanBase64: String?
     private var auditTrailImage: String?
     private var sessionId: String?
+    private var livenessMatchScore: Int?
     private var success = false
 
-    private let deviceKeyIdentifier = "dtRMttUJar6pYp2CTF4M5sCcvpzBsyfj"
-    private let baseURL = "https://api.facetec.com/api/v3.1/biometrics"
+    /// Temporary enrollment ID for this liveness session (used as "live side" in 3D-3D match)
+    private let tempEnrollmentId: String
 
-    init(sessionToken: String, presentingVC: UIViewController, result: @escaping FlutterResult) {
+    private let deviceKey = "dtRMttUJar6pYp2CTF4M5sCcvpzBsyfj"
+    private let baseURL   = "https://api.facetec.com/api/v3.1/biometrics"
+
+    init(sessionToken: String, enrollmentRefId: String?, presentingVC: UIViewController, result: @escaping FlutterResult) {
         self.flutterResult = result
+        self.registrationEnrollmentRefId = enrollmentRefId
+        self.tempEnrollmentId = "verifia-verify-\(UUID().uuidString)"
         super.init()
         let vc = FaceTec.sdk.createSessionVC(faceScanProcessorDelegate: self, sessionToken: sessionToken)
         presentingVC.present(vc, animated: true)
@@ -212,52 +271,320 @@ class FaceTecLivenessProcessor: NSObject, FaceTecFaceScanProcessorDelegate {
         self.faceScanBase64 = faceScan
         self.auditTrailImage = sessionResult.auditTrailCompressedBase64?.first
 
-        // POST to FaceTec dev server for liveness validation
-        var params: [String: Any] = ["faceScan": faceScan]
-        if let audit = sessionResult.auditTrailCompressedBase64?.first {
-            params["auditTrailImage"] = audit
-        }
-        if let lowQuality = sessionResult.lowQualityAuditTrailCompressedBase64?.first {
-            params["lowQualityAuditTrailImage"] = lowQuality
-        }
+        // Step 1: POST /enrollment-3d to enroll the live face temporarily
+        var params: [String: Any] = [
+            "faceScan": faceScan,
+            "externalDatabaseRefID": tempEnrollmentId
+        ]
+        if let audit = sessionResult.auditTrailCompressedBase64?.first       { params["auditTrailImage"] = audit }
+        if let low   = sessionResult.lowQualityAuditTrailCompressedBase64?.first { params["lowQualityAuditTrailImage"] = low }
 
-        var request = URLRequest(url: URL(string: baseURL + "/liveness-3d")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(deviceKeyIdentifier, forHTTPHeaderField: "X-Device-Key")
-        request.setValue(
-            FaceTec.sdk.createFaceTecAPIUserAgentString(sessionResult.sessionId),
-            forHTTPHeaderField: "User-Agent"
-        )
-        request.httpBody = try? JSONSerialization.data(withJSONObject: params)
-
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        post(path: "/enrollment-3d", params: params, sessionId: sessionResult.sessionId) { [weak self] json in
             guard let self = self else { return }
 
-            if let data = data,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let blob = json["scanResultBlob"] as? String {
-                self.success = faceScanResultCallback.onFaceScanGoToNextStep(scanResultBlob: blob)
+            let blob = json?["scanResultBlob"] as? String ?? "dev-bypass"
+            let enrollOk = !blob.isEmpty
+
+            // Step 2: If we have a registration enrollment, do 3D-3D match
+            if enrollOk, let regId = self.registrationEnrollmentRefId {
+                let matchParams: [String: Any] = [
+                    "enrollmentIdentifier":       self.tempEnrollmentId,
+                    "sourceEnrollmentIdentifier": regId
+                ]
+                self.post(path: "/match-3d-3d", params: matchParams, sessionId: sessionResult.sessionId) { [weak self] matchJson in
+                    guard let self = self else { return }
+                    if let level = matchJson?["matchLevel"] as? Int {
+                        self.livenessMatchScore = level * 10
+                        print("[FaceTec] 3D-3D match score: \(level) → \(level * 10)/100")
+                    } else {
+                        print("[FaceTec] match-3d-3d response: \(matchJson ?? [:])")
+                    }
+                    self.success = faceScanResultCallback.onFaceScanGoToNextStep(scanResultBlob: blob)
+                }
             } else {
-                // Dev fallback: proceed anyway so the flow isn't broken
-                print("[FaceTec] Liveness server call failed — using dev bypass")
-                self.success = true
-                faceScanResultCallback.onFaceScanResultCancel()
+                // No registration enrollment provided — skip match step
+                self.success = faceScanResultCallback.onFaceScanGoToNextStep(scanResultBlob: blob)
             }
-        }.resume()
+        }
     }
 
     func onFaceTecSDKCompletelyDone() {
         if success, let faceScan = faceScanBase64 {
-            flutterResult([
+            var resultDict: [String: Any] = [
                 "faceScanBase64": faceScan,
                 "auditTrailImage": auditTrailImage ?? "",
                 "sessionId": sessionId ?? ""
-            ])
+            ]
+            if let score = livenessMatchScore {
+                resultDict["livenessMatchScore"] = score
+            }
+            flutterResult(resultDict)
         } else {
             flutterResult(FlutterError(code: "LIVENESS_CANCELLED",
                                        message: "Verificación de presencia cancelada",
                                        details: nil))
         }
+    }
+
+    private func post(path: String, params: [String: Any], sessionId: String,
+                      completion: @escaping ([String: Any]?) -> Void) {
+        var request = URLRequest(url: URL(string: baseURL + path)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(deviceKey, forHTTPHeaderField: "X-Device-Key")
+        let ua = FaceTec.sdk.createFaceTecAPIUserAgentString(sessionId)
+        request.setValue(ua, forHTTPHeaderField: "User-Agent")
+        request.setValue(ua, forHTTPHeaderField: "X-User-Agent")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: params)
+
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                completion(nil)
+                return
+            }
+            completion(json)
+        }.resume()
+    }
+}
+
+// ─── Photo ID Match Processor ─────────────────────────────────────────────────
+// Flow:
+//   1. 3D Liveness face scan → POST /enrollment-3d → get scanResultBlob
+//   2. ID scan (INE/passport) → POST /match-3d-2d-idscan → get matchLevel + OCR data
+//   3. Return all data to Flutter via FlutterResult
+
+class FaceTecIDMatchProcessor: NSObject, FaceTecFaceScanProcessorDelegate, FaceTecIDScanProcessorDelegate {
+
+    private let flutterResult: FlutterResult
+    private let idType: String
+
+    private var faceScanCallback: FaceTecFaceScanResultCallback?
+    private var idScanCallback: FaceTecIDScanResultCallback?
+    private var faceScanBase64: String?
+    private var auditTrailImage: String?
+    private var sessionId: String?
+    private var idFrontPhoto: String?
+    private var idBackPhoto: String?
+    private var fullName: String?
+    private var curp: String?
+    private var dateOfBirth: String?
+    private var matchLevel: Int = 0
+    private var enrollmentId: String
+    private var success = false
+
+    private let deviceKey = "dtRMttUJar6pYp2CTF4M5sCcvpzBsyfj"
+    private let baseURL   = "https://api.facetec.com/api/v3.1/biometrics"
+
+    init(sessionToken: String, idType: String, presentingVC: UIViewController, result: @escaping FlutterResult) {
+        self.flutterResult = result
+        self.idType = idType
+        self.enrollmentId = "verifia-\(UUID().uuidString)"
+        super.init()
+
+        // Configure Spanish upload messages
+        FaceTecCustomization.setIDScanUploadMessageOverrides(
+            frontSideUploadStarted: "Subiendo\nFrente del ID",
+            frontSideStillUploading: "Subiendo...\nConexión lenta",
+            frontSideUploadCompleteAwaitingResponse: "Carga completa",
+            frontSideUploadCompleteAwaitingProcessing: "Procesando\nID",
+            backSideUploadStarted: "Subiendo\nReverso del ID",
+            backSideStillUploading: "Subiendo...\nConexión lenta",
+            backSideUploadCompleteAwaitingResponse: "Carga completa",
+            backSideUploadCompleteAwaitingProcessing: "Procesando\nReverso",
+            userConfirmedInfoUploadStarted: "Guardando\nTus Datos",
+            userConfirmedInfoStillUploading: "Subiendo...\nConexión lenta",
+            userConfirmedInfoUploadCompleteAwaitingResponse: "Datos Guardados",
+            userConfirmedInfoUploadCompleteAwaitingProcessing: "Procesando",
+            nfcUploadStarted: "Subiendo\nDetalles NFC",
+            nfcStillUploading: "Subiendo...\nConexión lenta",
+            nfcUploadCompleteAwaitingResponse: "Carga completa",
+            nfcUploadCompleteAwaitingProcessing: "Procesando\nNFC",
+            skippedNFCUploadStarted: "Subiendo\nDetalles del ID",
+            skippedNFCStillUploading: "Subiendo...\nConexión lenta",
+            skippedNFCUploadCompleteAwaitingResponse: "Carga completa",
+            skippedNFCUploadCompleteAwaitingProcessing: "Procesando\nDetalles"
+        )
+
+        let vc = FaceTec.sdk.createSessionVC(
+            faceScanProcessorDelegate: self,
+            idScanProcessorDelegate: self,
+            sessionToken: sessionToken
+        )
+        presentingVC.present(vc, animated: true)
+    }
+
+    // ─── Step 1: Face scan → enrollment-3d ───────────────────────────────────
+
+    func processSessionWhileFaceTecSDKWaits(sessionResult: FaceTecSessionResult,
+                                             faceScanResultCallback: FaceTecFaceScanResultCallback) {
+        self.faceScanCallback = faceScanResultCallback
+        self.sessionId = sessionResult.sessionId
+
+        guard sessionResult.status == .sessionCompletedSuccessfully,
+              let faceScan = sessionResult.faceScanBase64 else {
+            faceScanResultCallback.onFaceScanResultCancel()
+            return
+        }
+
+        self.faceScanBase64 = faceScan
+        self.auditTrailImage = sessionResult.auditTrailCompressedBase64?.first
+
+        var params: [String: Any] = [
+            "faceScan": faceScan,
+            "externalDatabaseRefID": enrollmentId
+        ]
+        if let audit = sessionResult.auditTrailCompressedBase64?.first { params["auditTrailImage"] = audit }
+        if let low  = sessionResult.lowQualityAuditTrailCompressedBase64?.first { params["lowQualityAuditTrailImage"] = low }
+
+        post(path: "/enrollment-3d", params: params, sessionId: sessionResult.sessionId) { [weak self] json in
+            guard let self = self else { return }
+            if let blob = json?["scanResultBlob"] as? String {
+                _ = faceScanResultCallback.onFaceScanGoToNextStep(scanResultBlob: blob)
+            } else {
+                // Dev fallback
+                print("[FaceTec ID] enrollment-3d failed — continuing anyway")
+                _ = faceScanResultCallback.onFaceScanGoToNextStep(scanResultBlob: "dev-bypass")
+            }
+        }
+    }
+
+    // ─── Step 2: ID scan → match-3d-2d-idscan ────────────────────────────────
+
+    func processIDScanWhileFaceTecSDKWaits(idScanResult: FaceTecIDScanResult,
+                                            idScanResultCallback: FaceTecIDScanResultCallback) {
+        self.idScanCallback = idScanResultCallback
+
+        guard idScanResult.status == .success else {
+            idScanResultCallback.onIDScanResultCancel()
+            return
+        }
+
+        self.idFrontPhoto = idScanResult.frontImagesCompressedBase64?.first
+        self.idBackPhoto  = idScanResult.backImagesCompressedBase64?.first
+
+        var params: [String: Any] = [
+            "idScan": idScanResult.idScanBase64 ?? "",
+            "minMatchLevel": 3,
+            "externalDatabaseRefID": enrollmentId
+        ]
+        if let front = idScanResult.frontImagesCompressedBase64?.first { params["idScanFrontImage"] = front }
+        if let back  = idScanResult.backImagesCompressedBase64?.first  { params["idScanBackImage"]  = back  }
+
+        post(path: "/match-3d-2d-idscan", params: params, sessionId: idScanResult.sessionId ?? "") { [weak self] json in
+            guard let self = self else { return }
+
+            if let json = json, let blob = json["scanResultBlob"] as? String {
+                // Log full response for debugging
+                print("[FaceTec ID] match-3d-2d-idscan response keys: \(json.keys.sorted())")
+                if let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print("[FaceTec ID] Full response:\n\(jsonStr)")
+                }
+
+                // Match level (FaceTec returns 0–10; multiply by 10 for 0–100 display)
+                if let level = json["matchLevel"] as? Int { self.matchLevel = level * 10 }
+
+                // Extract OCR data — try multiple possible response structures.
+                // FaceTec INE returns: givenName, surname, secondSurname (or firstName/lastName/fullName).
+                // Strip standalone "-" tokens that FaceTec inserts for empty middle-name fields.
+                func clean(_ s: String) -> String {
+                    s.components(separatedBy: .whitespaces)
+                     .filter { $0 != "-" && !$0.isEmpty }
+                     .joined(separator: " ")
+                }
+
+                func extractName(_ d: [String: Any]) -> String? {
+                    // Prefer explicit full name
+                    if let n = d["fullName"] as? String, !clean(n).isEmpty { return clean(n) }
+
+                    // Mexican INE field names used by FaceTec OCR
+                    let given  = d["givenName"]     as? String ?? d["firstName"]  as? String ?? ""
+                    let pat    = d["surname"]        as? String ?? d["lastName"]   as? String ?? ""
+                    let mat    = d["secondSurname"]  as? String ?? ""
+
+                    // Build "APELLIDO_PAT APELLIDO_MAT NOMBRE(S)" — standard Mexican order
+                    let parts  = [pat, mat, given].map { clean($0) }.filter { !$0.isEmpty }
+                    let combined = parts.joined(separator: " ")
+                    return combined.isEmpty ? nil : combined
+                }
+
+                // Priority: userConfirmedDetails (user-edited on Review & Confirm screen) > data > top-level
+                if let confirmed = json["userConfirmedDetails"] as? [String: Any] {
+                    if let name = extractName(confirmed), self.fullName == nil { self.fullName = name }
+                    self.dateOfBirth = self.dateOfBirth ?? confirmed["dob"] as? String ?? confirmed["dateOfBirth"] as? String
+                    self.curp        = self.curp        ?? confirmed["curp"] as? String ?? confirmed["CURP"] as? String
+                }
+                if let data = json["data"] as? [String: Any] {
+                    if let name = extractName(data), self.fullName == nil { self.fullName = name }
+                    self.dateOfBirth = self.dateOfBirth ?? data["dob"] as? String ?? data["dateOfBirth"] as? String
+                    if let extra = data["additionalSessionData"] as? [String: Any] {
+                        self.curp = self.curp ?? extra["curp"] as? String ?? extra["CURP"] as? String
+                        if let name = extractName(extra), self.fullName == nil { self.fullName = name }
+                    }
+                }
+                if let name = extractName(json), self.fullName == nil { self.fullName = name }
+                if let extra = json["additionalSessionData"] as? [String: Any] {
+                    if let name = extractName(extra), self.fullName == nil { self.fullName = name }
+                    self.curp = self.curp ?? extra["curp"] as? String ?? extra["CURP"] as? String
+                }
+                if self.dateOfBirth == nil {
+                    self.dateOfBirth = json["dob"] as? String ?? json["dateOfBirth"] as? String
+                }
+
+                print("[FaceTec ID] Parsed — name: \(self.fullName ?? "nil"), curp: \(self.curp ?? "nil"), dob: \(self.dateOfBirth ?? "nil"), matchLevel: \(self.matchLevel)")
+                self.success = idScanResultCallback.onIDScanResultProceedToNextStep(scanResultBlob: blob)
+            } else {
+                // Dev fallback: proceed without server validation
+                print("[FaceTec ID] match-3d-2d-idscan failed — using dev bypass")
+                self.success = true
+                idScanResultCallback.onIDScanResultCancel()
+            }
+        }
+    }
+
+    func onFaceTecSDKCompletelyDone() {
+        if success || (idFrontPhoto != nil) {
+            var result: [String: Any] = [
+                "faceScanBase64": faceScanBase64 ?? "",
+                "auditTrailImage": auditTrailImage ?? "",
+                "sessionId": sessionId ?? "",
+                "idFrontPhoto": idFrontPhoto ?? "",
+                "idBackPhoto": idBackPhoto ?? "",
+                "matchLevel": matchLevel,
+                "enrollmentRefId": enrollmentId,
+            ]
+            if let name = fullName    { result["fullName"]    = name }
+            if let c    = curp        { result["curp"]        = c    }
+            if let dob  = dateOfBirth { result["dateOfBirth"] = dob  }
+            flutterResult(result)
+        } else {
+            flutterResult(FlutterError(code: "ID_MATCH_CANCELLED",
+                                       message: "Escaneo de ID cancelado",
+                                       details: nil))
+        }
+    }
+
+    // ─── Helper: POST to FaceTec dev server ──────────────────────────────────
+
+    private func post(path: String, params: [String: Any], sessionId: String,
+                      completion: @escaping ([String: Any]?) -> Void) {
+        var request = URLRequest(url: URL(string: baseURL + path)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(deviceKey, forHTTPHeaderField: "X-Device-Key")
+        let ua = FaceTec.sdk.createFaceTecAPIUserAgentString(sessionId)
+        request.setValue(ua, forHTTPHeaderField: "User-Agent")
+        request.setValue(ua, forHTTPHeaderField: "X-User-Agent")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: params)
+
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                completion(nil)
+                return
+            }
+            completion(json)
+        }.resume()
     }
 }

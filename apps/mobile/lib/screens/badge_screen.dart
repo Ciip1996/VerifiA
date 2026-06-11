@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
-import 'qr_scanner_screen.dart';
-
 /// Badge screen — displays the issued JWT badge with a countdown timer.
 /// Also shows a QR of the JWT so the verifier can scan it (optional flow).
 class BadgeScreen extends StatefulWidget {
@@ -69,10 +67,7 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const QRScannerScreen()),
-            (_) => false,
-          ),
+          onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
         ),
         title: const Text('Badge de Presencia', style: TextStyle(color: Colors.white)),
         centerTitle: true,

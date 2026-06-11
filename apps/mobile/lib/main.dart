@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/presence_challenge_screen.dart';
-import 'screens/qr_scanner_screen.dart';
-import 'services/app_attest_service.dart';
+import 'screens/home_screen.dart';
+import 'services/app_attest_service.dart' show AppAttestService;
 import 'services/api_service.dart';
 
 // Global navigator key so deep link handler can push routes from outside widget tree
@@ -14,20 +16,22 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
-  if (!skipAttest) {
-    unawaited(_initAppAttest());
-  }
+  if (!skipAttest) unawaited(_initAppAttest());
 
   runApp(const VerifiAApp());
 }
 
 Future<void> _initAppAttest() async {
+  const storage = FlutterSecureStorage();
   final appAttest = AppAttestService();
   final api = ApiService();
   try {
     await appAttest.registerIfNeeded(api);
   } catch (e) {
     debugPrint('[VerifiA] App Attest init warning: $e');
+    // If registration fails (e.g. stale key from previous install), reset profile flag
+    // so the user is directed to onboarding on next launch.
+    await storage.delete(key: 'profile_registered');
   }
 }
 
@@ -62,11 +66,37 @@ class VerifiAApp extends StatefulWidget {
 
 class _VerifiAAppState extends State<VerifiAApp> {
   StreamSubscription<Uri>? _linkSub;
+  Widget _home = const HomeScreen();
+
+  static const bool _skipAttest =
+      bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
 
   @override
   void initState() {
     super.initState();
     _initDeepLinks();
+    _resolveHome();
+  }
+
+  Future<void> _resolveHome() async {
+    const storage = FlutterSecureStorage();
+
+    if (_skipAttest) {
+      final storedDeviceId = await storage.read(key: 'verifia_device_id');
+      if (storedDeviceId != null) {
+        // Stale real-attest keys present — clear so onboarding runs fresh
+        await storage.delete(key: 'profile_registered');
+        await storage.delete(key: 'verifia_device_id');
+        await storage.delete(key: 'verifia_app_attest_key_id');
+      }
+    }
+
+    final registered = await storage.read(key: 'profile_registered');
+    if (!mounted) return;
+    if (registered != 'true') {
+      setState(() => _home = const OnboardingScreen());
+    }
+    // If registered, HomeScreen handles showing login if session is missing
   }
 
   Future<void> _initDeepLinks() async {
@@ -117,7 +147,7 @@ class _VerifiAAppState extends State<VerifiAApp> {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.dark,
-      home: const QRScannerScreen(),
+      home: _home,
     );
   }
 }

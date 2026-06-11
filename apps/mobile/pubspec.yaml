@@ -28,10 +28,17 @@ dependencies:
   # On-device face detection (yaw/pitch for head-turn liveness challenge)
   google_mlkit_face_detection: ^0.13.2
 
+  # QR code generator (for create challenge / share screen)
+  qr_flutter: ^4.1.0
+
+  # Share / open URL
+  share_plus: ^11.0.0
+
   # Utils
   uuid: ^4.5.1
   intl: ^0.19.0
   app_links: ^7.0.0
+  google_mlkit_text_recognition: ^0.15.1
 
 dev_dependencies:
   flutter_test:

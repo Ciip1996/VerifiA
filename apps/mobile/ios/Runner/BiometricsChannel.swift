@@ -32,6 +32,10 @@ class BiometricsChannel: NSObject {
             handleAuthenticate(reason: reason, result: result)
         case "playSuccess":
             handlePlaySuccess(result: result)
+        case "playIncoming":
+            handlePlayIncoming(result: result)
+        case "playSent":
+            handlePlaySent(result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -39,19 +43,47 @@ class BiometricsChannel: NSObject {
 
     private func handlePlaySuccess(result: @escaping FlutterResult) {
         DispatchQueue.main.async {
-            // Taptic Engine "success" pattern — works even in silent mode
-            let haptic = UINotificationFeedbackGenerator()
-            haptic.prepare()
-            haptic.notificationOccurred(.success)
+            // Primary: notification haptic ("success" pattern, always fires regardless of mute)
+            let notification = UINotificationFeedbackGenerator()
+            notification.prepare()
+            notification.notificationOccurred(.success)
 
-            // "Glass" chime (system sound 1109) at alert volume — plays alongside haptic
+            // Secondary: heavy impact for a stronger physical sensation
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.prepare()
+            impact.impactOccurred()
+
+            // Audio chime — only audible when not muted; haptics above fire regardless
             AudioServicesPlayAlertSoundWithCompletion(1109, nil)
 
-            // Force-vibrate via AudioServices so it fires even if Taptic is subtle
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-            }
+            result(true)
+        }
+    }
 
+    /// Fired when a new incoming verification request arrives.
+    /// Sound: "ReceivedMessage" chime (1315) — short, distinct ping.
+    /// Haptic: warning pattern (double tap sensation) — signals attention needed.
+    private func handlePlayIncoming(result: @escaping FlutterResult) {
+        DispatchQueue.main.async {
+            let notification = UINotificationFeedbackGenerator()
+            notification.prepare()
+            notification.notificationOccurred(.warning)
+
+            AudioServicesPlayAlertSoundWithCompletion(1315, nil)
+            result(true)
+        }
+    }
+
+    /// Fired when the user successfully sends a verification request or QR.
+    /// Sound: "Tink" (1057) — a light, crisp tap confirming an action.
+    /// Haptic: light impact — gentle confirmation, not intrusive.
+    private func handlePlaySent(result: @escaping FlutterResult) {
+        DispatchQueue.main.async {
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.prepare()
+            impact.impactOccurred()
+
+            AudioServicesPlayAlertSoundWithCompletion(1057, nil)
             result(true)
         }
     }

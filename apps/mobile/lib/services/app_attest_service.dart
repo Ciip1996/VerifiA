@@ -74,6 +74,7 @@ class AppAttestService {
   }
 
   /// Generate a per-request assertion for the given nonce.
+  /// Automatically recovers if the Secure Enclave key was invalidated (e.g. after reinstall).
   Future<AttestationResult> generateAssertion({required String challenge}) async {
     if (_skipAttest) {
       return const AttestationResult(
@@ -82,15 +83,43 @@ class AppAttestService {
       );
     }
 
-    final keyId = await _storage.read(key: _keyIdStorageKey);
-    final deviceId = await _storage.read(key: _deviceIdStorageKey);
+    var keyId = await _storage.read(key: _keyIdStorageKey);
+    var deviceId = await _storage.read(key: _deviceIdStorageKey);
 
     if (keyId == null || deviceId == null) {
-      throw Exception('[AppAttest] Device not registered. Call registerIfNeeded() first.');
+      // Keys missing — try to register now
+      await registerIfNeeded(ApiService());
+      keyId = await _storage.read(key: _keyIdStorageKey);
+      deviceId = await _storage.read(key: _deviceIdStorageKey);
+      if (keyId == null || deviceId == null) {
+        throw Exception('[AppAttest] Device not registered. Call registerIfNeeded() first.');
+      }
     }
 
-    final assertion = await _generateAssertionNative(keyId: keyId, challenge: challenge);
-    return AttestationResult(assertion: assertion, deviceId: deviceId);
+    try {
+      final assertion = await _generateAssertionNative(keyId: keyId, challenge: challenge);
+      return AttestationResult(assertion: assertion, deviceId: deviceId);
+    } on PlatformException catch (e) {
+      // DCError.invalidKey (error 2) — Secure Enclave key invalidated after reinstall.
+      // Clear stored keys, re-register with a fresh key, and also reset the
+      // profile_registered flag so the user is taken through onboarding again.
+      if (e.message?.contains('error 2') == true ||
+          e.code == 'ATTEST_FAILED') {
+        debugPrint('[AppAttest] Key invalidated — clearing and re-registering');
+        await _storage.delete(key: _keyIdStorageKey);
+        await _storage.delete(key: _deviceIdStorageKey);
+        await _storage.delete(key: 'profile_registered'); // force re-onboarding
+        await registerIfNeeded(ApiService());
+        keyId = await _storage.read(key: _keyIdStorageKey);
+        deviceId = await _storage.read(key: _deviceIdStorageKey);
+        if (keyId == null || deviceId == null) {
+          throw Exception('[AppAttest] Re-registration failed after key invalidation');
+        }
+        final assertion = await _generateAssertionNative(keyId: keyId, challenge: challenge);
+        return AttestationResult(assertion: assertion, deviceId: deviceId);
+      }
+      rethrow;
+    }
   }
 
   // ─── Private MethodChannel calls ────────────────────────────────────────

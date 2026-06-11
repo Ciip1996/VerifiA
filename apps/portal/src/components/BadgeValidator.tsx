@@ -4,13 +4,14 @@ import {
   getTokenStatus,
   validateToken,
   type BadgeInfo,
+  type UserIdentity,
   type ChallengeResponse,
 } from '../api/client.ts';
 
 interface Props {
   challenge: ChallengeResponse;
-  onValidated: (badge: BadgeInfo) => void;
-  onExpiredOrInvalid: (reason: string) => void;
+  onValidated: (badge: BadgeInfo, identity?: UserIdentity | null) => void;
+  onExpiredOrInvalid: (reason: string, rejectionReason?: string) => void;
 }
 
 const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS ?? '2000', 10);
@@ -57,10 +58,14 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
           const validate = await validateToken(challenge.nonce);
           consumedRef.current = true;
           if (validate.valid && validate.badge) {
-            onValidated(validate.badge);
+            onValidated(validate.badge, validate.identity);
           } else {
             onExpiredOrInvalid('Validación fallida: ' + validate.message);
           }
+        } else if (res.status === 'REJECTED') {
+          clearInterval(pollRef.current!);
+          consumedRef.current = true;
+          onExpiredOrInvalid('Verificación rechazada por FaceTec.', res.rejection_reason ?? 'Score de coincidencia facial demasiado bajo.');
         } else if (res.status === 'EXPIRED') {
           clearInterval(pollRef.current!);
           if (!consumedRef.current) onExpiredOrInvalid('Token expirado.');

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/facetec_service.dart';
 import '../services/passkey_service.dart';
 import '../services/app_attest_service.dart';
@@ -46,6 +47,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   final _appAttest = AppAttestService();
   final _passkeys = PasskeyService();
   final _api = ApiService();
+  final _storage = const FlutterSecureStorage();
 
   // ── Confirmation / Anti-coercion ──────────────────────────────────────────
 
@@ -84,9 +86,14 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
 
       // Step 2: FaceTec 3D liveness — native SDK presents its own full-screen UI
       setState(() => _step = _FlowStep.facetec);
+      // Read stored enrollment ID to perform 3D-3D match during liveness
+      final enrollmentRefId = await _storage.read(key: 'facetec_enrollment_ref_id');
       final FaceTecResult facetecResult;
       try {
-        facetecResult = await FaceTecService().runLivenessSession(nonce: widget.nonce);
+        facetecResult = await FaceTecService().runLivenessSession(
+          nonce: widget.nonce,
+          enrollmentRefId: enrollmentRefId,
+        );
       } on PlatformException catch (e) {
         if (!mounted) return;
         if (e.code == 'LIVENESS_CANCELLED') {
@@ -100,6 +107,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
       _facetecSessionId = facetecResult.sessionId;
       final facetecFaceScan = facetecResult.faceScanBase64;
       final facetecAuditTrail = facetecResult.auditTrailImageBase64;
+      final livenessMatchScore = facetecResult.livenessMatchScore;
 
       // Step 2: App Attest assertion
       final attestResult =
@@ -126,6 +134,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
         facetecSessionId: _facetecSessionId!,
         facetecFaceScan: facetecFaceScan,
         facetecAuditTrailImage: facetecAuditTrail,
+        livenessMatchScore: livenessMatchScore,
         passkeyAssertion: passkeyAssertion,
       );
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -205,19 +206,40 @@ class _LivenessScreenState extends State<LivenessScreen>
     if (next == _Stage.done) _finish();
   }
 
-  void _finish() {
+  Future<void> _finish() async {
     if (_isFinishing) return;
     _isFinishing = true;
-    _cam?.stopImageStream();
 
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      Navigator.of(context).pop(FaceTecResult(
-        sessionId:
-            'mlkit-${widget.nonce.substring(0, 16)}-${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
-        faceScanBase64: 'mlkit-liveness-${widget.nonce.substring(0, 8)}',
-      ));
-    });
+    // Stop image stream before taking a still picture
+    try {
+      await _cam?.stopImageStream();
+    } catch (_) {}
+
+    // Brief pause so the user sees the "done" state
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+
+    // Capture a JPEG still to use as liveness snapshot for the portal
+    String snapshotBase64 = '';
+    try {
+      if (_cam != null && _cam!.value.isInitialized) {
+        final file = await _cam!.takePicture();
+        final bytes = await file.readAsBytes();
+        snapshotBase64 = base64Encode(bytes);
+      }
+    } catch (e) {
+      debugPrint('[Liveness] takePicture failed: $e');
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop(FaceTecResult(
+      sessionId:
+          'mlkit-${widget.nonce.substring(0, 16)}-${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
+      faceScanBase64: snapshotBase64.isNotEmpty
+          ? snapshotBase64
+          : 'mlkit-liveness-${widget.nonce.substring(0, 8)}',
+      auditTrailImageBase64: snapshotBase64.isNotEmpty ? snapshotBase64 : null,
+    ));
   }
 
   // ─── Fallback ──────────────────────────────────────────────────────────────
@@ -286,12 +308,18 @@ class _LivenessScreenState extends State<LivenessScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Real camera preview (mirrored so user sees themselves naturally)
+          // Front camera preview — fill screen while keeping native aspect ratio
           if (_cameraReady && _cam != null)
-            Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.diagonal3Values(-1.0, 1.0, 1.0),
-              child: CameraPreview(_cam!),
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  // previewSize is in landscape sensor coords; swap for portrait
+                  width: _cam!.value.previewSize?.height ?? 480,
+                  height: _cam!.value.previewSize?.width ?? 640,
+                  child: CameraPreview(_cam!),
+                ),
+              ),
             )
           else
             _buildDarkBackground(),
@@ -368,16 +396,13 @@ class _LivenessScreenState extends State<LivenessScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.18),
+                  color: const Color(0xFF6C63FF),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.5),
-                  ),
                 ),
                 child: const Text(
                   'LIVENESS 3D',
                   style: TextStyle(
-                    color: Color(0xFF6C63FF),
+                    color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,

@@ -6,6 +6,8 @@ import 'presence_challenge_screen.dart';
 
 /// QR scanner screen — entry point of the holder flow.
 /// Scans a verifia://badge?nonce=... QR code from the verifier portal.
+/// This widget is mounted only while tab 0 is active; navigating away
+/// unmounts it and fully releases the camera session via dispose().
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
 
@@ -28,7 +30,6 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Let MobileScanner call start() once after attach (do not start manually).
     _controller = MobileScannerController(
       formats: [BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.noDuplicates,
@@ -40,12 +41,24 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     if (mounted) setState(() {});
   }
 
+  void _safeStart() {
+    if (!_controller.value.isRunning) {
+      unawaited(_controller.start());
+    }
+  }
+
+  void _safeStop() {
+    if (_controller.value.isRunning) {
+      unawaited(_controller.stop());
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_processing) {
-      unawaited(_controller.start());
+      _safeStart();
     } else if (state == AppLifecycleState.inactive) {
-      unawaited(_controller.stop());
+      _safeStop();
     }
   }
 
@@ -62,7 +75,7 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     if (qrData == null) return;
 
     setState(() => _processing = true);
-    unawaited(_controller.stop());
+    _safeStop();
 
     Navigator.of(context)
         .push(
@@ -76,7 +89,7 @@ class _QRScannerScreenState extends State<QRScannerScreen>
         .then((_) {
           if (!mounted) return;
           setState(() => _processing = false);
-          unawaited(_controller.start());
+          _safeStart();
         });
   }
 
@@ -128,7 +141,7 @@ class _QRScannerScreenState extends State<QRScannerScreen>
               title: 'No se pudo iniciar la cámara',
               subtitle: error.errorDetails?.message ?? error.errorCode.message,
               actionLabel: 'Reintentar',
-              onAction: () => unawaited(_controller.start()),
+              onAction: () { _safeStop(); Future.delayed(const Duration(milliseconds: 300), _safeStart); },
             ),
             placeholderBuilder: (context) => const Center(
               child: Column(
@@ -148,7 +161,7 @@ class _QRScannerScreenState extends State<QRScannerScreen>
               subtitle:
                   'Ve a Ajustes → Verifia Mobile → Cámara y actívala, luego pulsa Reintentar.',
               actionLabel: 'Reintentar',
-              onAction: () => unawaited(_controller.start()),
+              onAction: _safeStart,
             ),
           IgnorePointer(
             child: Center(

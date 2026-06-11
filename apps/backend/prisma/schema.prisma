@@ -11,20 +11,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Account ──────────────────────────────────────────────────────────────
+// Identity-linked web account. Created from mobile after FaceTec onboarding.
+// Enables authenticated access to the portal and mobile QR generation.
+model Account {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password_hash String
+  device_id     String   @unique // links to UserProfile.device_id
+
+  created_at DateTime @default(now())
+
+  @@map("accounts")
+}
+
 // ─── Challenge ────────────────────────────────────────────────────────────
 // Created by the portal (verifier) to initiate a badge session.
 // The nonce is embedded in the QR code deep link.
 model Challenge {
-  id          String   @id @default(cuid())
-  nonce       String   @unique
-  verifier_id String   // maps to JWT `aud`; also the portal's API key
-  exp_time    DateTime
-  status      String   @default("PENDING") // PENDING | USED
+  id               String   @id @default(cuid())
+  nonce            String   @unique
+  verifier_id      String   // maps to JWT `aud`; also the portal's API key or account email
+  exp_time         DateTime
+  status           String   @default("PENDING") // PENDING | USED | EXPIRED | REJECTED
+  account_id       String?  // Account that created this challenge (null for API-key created)
+  target_email     String?  // Email of user being asked to verify (for incoming validations)
+  rejection_reason String?  // Set when status = REJECTED (e.g. FaceTec score too low)
 
   created_at DateTime @default(now())
 
   @@index([verifier_id])
   @@index([status])
+  @@index([account_id])
+  @@index([target_email])
   @@map("challenges")
 }
 
@@ -32,20 +51,45 @@ model Challenge {
 // Ephemeral badge token issued after successful 3-layer verification.
 // TTL: TOKEN_TTL_SECONDS (default 300s / 5min).
 model Token {
-  id      String @id @default(cuid())
-  jti     String @unique @default(cuid()) // JWT ID — uniqueness key for replay prevention
-  nonce   String @unique                  // links back to the challenge
-  aud     String                          // verifier_id — must match on validation
-  exp     DateTime
-  iat     DateTime @default(now())
-  status  String   @default("ACTIVE")    // ACTIVE | USED | EXPIRED | REVOKED
-  jwt_raw String   @db.Text              // full JWT string (for signature re-verification)
+  id                String  @id @default(cuid())
+  jti               String  @unique @default(cuid()) // JWT ID — uniqueness key for replay prevention
+  nonce             String  @unique                  // links back to the challenge
+  aud               String                           // verifier_id — must match on validation
+  exp               DateTime
+  iat               DateTime @default(now())
+  status            String   @default("ACTIVE")      // ACTIVE | USED | EXPIRED | REVOKED
+  jwt_raw           String   @db.Text                // full JWT string (for signature re-verification)
+  device_id            String?                          // links token → UserProfile
+  liveness_snapshot    String?  @db.Text               // base64 JPEG selfie captured at verification time
+  liveness_match_score Int?                             // 3D-to-3D score (0–100) comparing live face vs. registration enrollment
 
   created_at DateTime @default(now())
 
   @@index([status])
   @@index([aud])
+  @@index([device_id])
   @@map("tokens")
+}
+
+// ─── UserProfile ──────────────────────────────────────────────────────────
+// Registered user identity — created during onboarding via FaceTec Photo ID Match.
+// Stores OCR data, ID photos, registration selfie, and face match score.
+model UserProfile {
+  id                  String   @id @default(cuid())
+  device_id           String   @unique
+  full_name           String
+  curp                String?                // from OCR (INE only)
+  date_of_birth       String?                // from OCR
+  id_type             String                 // "INE" | "PASSPORT"
+  profile_photo       String   @db.Text      // base64 JPEG — selfie audit trail from FaceTec (registration)
+  id_front_photo      String   @db.Text      // base64 JPEG — front face of ID
+  id_back_photo       String?  @db.Text      // base64 JPEG — back of ID (INE has reverse)
+  facetec_match_level Int?                   // 0–100 FaceTec face-vs-ID match score (2D-vs-3D, registration)
+  enrollment_ref_id   String?                // FaceTec externalDatabaseRefID used in /enrollment-3d at registration
+
+  created_at DateTime @default(now())
+
+  @@map("user_profiles")
 }
 
 // ─── AppAttestKey ─────────────────────────────────────────────────────────

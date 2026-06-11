@@ -18,6 +18,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@simplewebauthn/server": "13.3.1",
+    "bcryptjs": "3.0.3",
     "cbor2": "2.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -25,10 +26,12 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "jose": "^5.9.6",
+    "resend": "6.12.4",
     "uuid": "^10.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.9.0",
