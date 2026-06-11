@@ -150,3 +150,130 @@ jobs:
         env:
           VERIFIA_SKIP_ATTEST: 'true'
           VERIFIA_API_URL: 'http://localhost:3001'
+
+  # ─── Deploy backend to Vercel ──────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend (Vercel)
+    needs: backend
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Run Prisma migrations against production DB
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL_PROD }}
+
+      - name: Deploy to Vercel
+        run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+
+  # ─── Deploy portal to Vercel ───────────────────────────────────────────────
+  deploy-portal:
+    name: Deploy Portal (Vercel)
+    needs: portal
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/portal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Deploy to Vercel
+        run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PORTAL }}
+
+  # ─── Build + upload to TestFlight ──────────────────────────────────────────
+  testflight:
+    name: TestFlight (Fastlane beta)
+    needs: flutter
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: pod install
+        working-directory: apps/mobile/ios
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: apps/mobile
+
+      - name: Install distribution certificate
+        run: |
+          echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/cert.p12 -k build.keychain \
+            -P "${{ secrets.CERTIFICATE_PASSWORD }}" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list \
+            -S apple-tool:,apple: -s -k "" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+
+      - name: Install provisioning profile
+        run: |
+          echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode \
+            > /tmp/profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp /tmp/profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Build and upload to TestFlight
+        run: bundle exec fastlane beta
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          PROVISIONING_PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
+          VERIFIA_API_URL_PROD: ${{ secrets.VERIFIA_API_URL_PROD }}
+          BUILD_NUMBER: ${{ github.run_number }}

@@ -26,6 +26,12 @@ class InboxService extends ChangeNotifier {
   List<IncomingChallenge> get items => _items;
   int get unseenCount => _unseenCount;
 
+  /// Optimistically removes a challenge from the local list (e.g. after rejection).
+  void removeItem(String nonce) {
+    _items = _items.where((c) => c.nonce != nonce).toList();
+    notifyListeners();
+  }
+
   /// Returns and clears the newest unseen challenge (for showing the banner).
   IncomingChallenge? consumeLatestNew() {
     final c = _latestNew;

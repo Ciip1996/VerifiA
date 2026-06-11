@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
+import '../services/sent_challenges_service.dart';
 import 'account_profile_screen.dart';
 import 'onboarding_screen.dart';
 import 'qr_scanner_screen.dart';
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _storage = FlutterSecureStorage();
 
   final _inbox = InboxService.instance;
+  final _sent = SentChallengesService.instance;
 
   @override
   void initState() {
@@ -35,11 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadProfile();
     _inbox.addListener(_onInboxChanged);
     _inbox.start();
+    _sent.addListener(_onSentChanged);
+    _sent.start();
   }
 
   @override
   void dispose() {
     _inbox.removeListener(_onInboxChanged);
+    _sent.removeListener(_onSentChanged);
     super.dispose();
   }
 
@@ -113,6 +118,74 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     // Auto-dismiss after 6 seconds
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted) messenger.hideCurrentMaterialBanner();
+    });
+  }
+
+  void _onSentChanged() {
+    if (!mounted) return;
+    setState(() {});
+
+    final change = _sent.consumeLatestChange();
+    if (change == null) return;
+
+    // Play haptic/sound feedback and show banner
+    FeedbackService.incoming(); // reuse warning haptic — it signals "attention needed"
+    _showRejectedBanner(change);
+  }
+
+  void _showRejectedBanner(SentStatusChange change) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentMaterialBanner();
+
+    final c = change.challenge;
+    final isRejected = change.newStatus == 'REJECTED';
+    final label = isRejected ? 'rechazó' : 'canceló';
+    final recipient = c.subjectFullName ?? c.targetEmail ?? 'El destinatario';
+
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: CircleAvatar(
+          radius: 20,
+          backgroundColor: isRejected
+              ? const Color(0xFFC62828).withAlpha(30)
+              : const Color(0xFF757575).withAlpha(30),
+          child: Icon(
+            isRejected ? Icons.cancel_rounded : Icons.block_rounded,
+            color: isRejected ? const Color(0xFFC62828) : const Color(0xFF757575),
+            size: 22,
+          ),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$recipient $label tu solicitud',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            if (c.targetEmail != null)
+              Text(c.targetEmail!, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => messenger.hideCurrentMaterialBanner(),
+            child: const Text('Descartar'),
+          ),
+          FilledButton.tonal(
+            onPressed: () {
+              messenger.hideCurrentMaterialBanner();
+              setState(() => _tabIndex = 2); // go to Solicitudes tab
+            },
+            child: const Text('Ver'),
+          ),
+        ],
+      ),
+    );
+
     Future.delayed(const Duration(seconds: 6), () {
       if (mounted) messenger.hideCurrentMaterialBanner();
     });

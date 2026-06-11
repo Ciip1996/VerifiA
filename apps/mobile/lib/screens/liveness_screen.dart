@@ -46,6 +46,11 @@ class _LivenessScreenState extends State<LivenessScreen>
   int _stageFrames = 0;
   bool _isFinishing = false;
 
+  // ─── Countdown before photo ────────────────────────────────────────────────
+  /// null = not counting; 'ready' = prep message; 3/2/1 = digits; 0 = flash
+  Object? _countdown; // String 'ready' | int 3|2|1|0
+  bool _flashVisible = false;
+
   static const _centerYaw = 15.0;  // degrees
   static const _turnYaw   = 20.0;  // degrees
   static const _centerFrames = 45;
@@ -210,16 +215,36 @@ class _LivenessScreenState extends State<LivenessScreen>
     if (_isFinishing) return;
     _isFinishing = true;
 
-    // Stop image stream before taking a still picture
+    // Stop ML Kit stream — camera preview stays live for the countdown
     try {
       await _cam?.stopImageStream();
     } catch (_) {}
 
-    // Brief pause so the user sees the "done" state
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
+    // ── Step 1: "¡Prepárate para la foto!" ─────────────────────────────────
+    if (mounted) setState(() => _countdown = 'ready');
+    await Future.delayed(const Duration(milliseconds: 900));
 
-    // Capture a JPEG still to use as liveness snapshot for the portal
+    // ── Step 2: 3 – 2 – 1 countdown ────────────────────────────────────────
+    for (final n in [3, 2, 1]) {
+      if (!mounted) return;
+      _biometricsChannel.invokeMethod<bool>('playSuccess').catchError((_) {
+        HapticFeedback.selectionClick();
+        return false;
+      });
+      setState(() => _countdown = n);
+      await Future.delayed(const Duration(milliseconds: 950));
+    }
+
+    // ── Step 3: White flash → take photo ───────────────────────────────────
+    if (!mounted) return;
+    _biometricsChannel.invokeMethod<bool>('playSuccess').catchError((_) {
+      HapticFeedback.heavyImpact();
+      return false;
+    });
+    setState(() { _countdown = 0; _flashVisible = true; });
+    await Future.delayed(const Duration(milliseconds: 120));
+    if (mounted) setState(() => _flashVisible = false);
+
     String snapshotBase64 = '';
     try {
       if (_cam != null && _cam!.value.isInitialized) {
@@ -231,6 +256,7 @@ class _LivenessScreenState extends State<LivenessScreen>
       debugPrint('[Liveness] takePicture failed: $e');
     }
 
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     Navigator.of(context).pop(FaceTecResult(
       sessionId:
@@ -280,6 +306,9 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   String get _instruction {
     if (_fallbackMode) return 'Verificando presencia...';
+    if (_countdown == 'ready') return '¡Prepárate para la foto!';
+    if (_countdown is int && (_countdown as int) > 0) return '';
+    if (_countdown == 0) return '¡Foto!';
     return switch (_stage) {
       _Stage.center       => 'Centra tu cara en el óvalo',
       _Stage.turn         => 'Gira la cabeza a un lado',
@@ -354,6 +383,36 @@ class _LivenessScreenState extends State<LivenessScreen>
               bottom: 0, left: 0, right: 0,
               child: SafeArea(child: _buildBottomBar()),
             ),
+
+          // Countdown digit overlay (3 / 2 / 1)
+          if (_countdown is int && (_countdown as int) > 0)
+            Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: Tween(begin: 0.5, end: 1.0).animate(
+                    CurvedAnimation(parent: anim, curve: Curves.elasticOut),
+                  ),
+                  child: FadeTransition(opacity: anim, child: child),
+                ),
+                child: Text(
+                  '${_countdown}',
+                  key: ValueKey(_countdown),
+                  style: const TextStyle(
+                    fontSize: 120,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(color: Colors.black54, blurRadius: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // White flash on capture
+          if (_flashVisible)
+            Container(color: Colors.white.withValues(alpha: 0.85)),
         ],
       ),
     );

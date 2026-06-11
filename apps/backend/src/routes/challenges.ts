@@ -51,6 +51,8 @@ challengesRouter.post('/', optionalAccount, async (req, res, next) => {
 
     const deepLink = `verifia://badge?nonce=${nonce}&verifier=${encodeURIComponent(verifier_id)}`;
     const qrData = deepLink;
+    const apiBase = (process.env.API_BASE_URL ?? '').replace(/\/$/, '');
+    const redirectUrl = apiBase ? `${apiBase}/r/${nonce}` : deepLink;
 
     res.status(201).json({
       nonce: challenge.nonce,
@@ -58,6 +60,7 @@ challengesRouter.post('/', optionalAccount, async (req, res, next) => {
       expires_in: ttlSeconds,
       qr_data: qrData,
       deep_link: deepLink,
+      redirect_url: redirectUrl,
       expires_at: expTime.toISOString(),
     });
   } catch (err) {
@@ -182,6 +185,8 @@ challengesRouter.post('/send-invite', requireAccount, async (req, res, next) => 
     }
 
     const deepLink = `verifia://badge?nonce=${nonce}&verifier=${encodeURIComponent(challenge.verifier_id)}`;
+    const apiBase = (process.env.API_BASE_URL ?? '').replace(/\/$/, '');
+    const shareLink = apiBase ? `${apiBase}/r/${nonce}` : deepLink;
     const expStr = challenge.exp_time.toLocaleString('es-MX', {
       day: 'numeric', month: 'long', year: 'numeric',
       hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City',
@@ -218,7 +223,7 @@ challengesRouter.post('/send-invite', requireAccount, async (req, res, next) => 
           <!-- CTA deep link -->
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
             <tr><td align="center">
-              <a href="${deepLink}"
+              <a href="${shareLink}"
                  style="display:inline-block;background:#6c63ff;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:600;font-size:15px">
                 Abrir solicitud de verificación →
               </a>
@@ -227,7 +232,7 @@ challengesRouter.post('/send-invite', requireAccount, async (req, res, next) => 
 
           <p style="margin:0 0 8px;font-size:12px;color:#888;text-align:center">
             O copia este enlace manualmente:<br>
-            <code style="font-size:11px;color:#555">${deepLink}</code>
+            <code style="font-size:11px;color:#555">${shareLink}</code>
           </p>
 
           <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
@@ -256,6 +261,108 @@ challengesRouter.post('/send-invite', requireAccount, async (req, res, next) => 
     });
 
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/v1/challenges/:nonce/start
+ * Recipient signals that they have opened the challenge and begun verification.
+ * No account auth required — knowledge of the nonce is sufficient.
+ * Transitions PENDING → IN_PROGRESS so the sender sees live feedback.
+ */
+challengesRouter.patch('/:nonce/start', async (req, res, next) => {
+  try {
+    const { nonce } = req.params as { nonce: string };
+
+    const challenge = await prisma.challenge.findUnique({
+      where: { nonce },
+      select: { nonce: true, status: true, exp_time: true },
+    });
+
+    if (!challenge) {
+      throw new AppError(404, 'Challenge not found', 'CHALLENGE_NOT_FOUND');
+    }
+    // Only transition from PENDING; silently succeed for IN_PROGRESS (idempotent)
+    if (challenge.status === 'PENDING') {
+      await prisma.challenge.update({
+        where: { nonce },
+        data: { status: 'IN_PROGRESS' },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/v1/challenges/:nonce/reject
+ * Recipient explicitly declines a targeted verification request.
+ * Guard: challenge must be PENDING and target_email must match caller's email.
+ */
+challengesRouter.patch('/:nonce/reject', requireAccount, async (req, res, next) => {
+  try {
+    const { nonce } = req.params as { nonce: string };
+
+    const challenge = await prisma.challenge.findUnique({
+      where: { nonce },
+      select: { nonce: true, status: true, target_email: true },
+    });
+
+    if (!challenge) {
+      throw new AppError(404, 'Challenge not found', 'CHALLENGE_NOT_FOUND');
+    }
+    if (challenge.status !== 'PENDING') {
+      throw new AppError(409, 'Challenge is no longer pending', 'CHALLENGE_NOT_PENDING');
+    }
+    if (challenge.target_email?.toLowerCase() !== req.account!.email.toLowerCase()) {
+      throw new AppError(403, 'You are not the intended recipient', 'FORBIDDEN');
+    }
+
+    await prisma.challenge.update({
+      where: { nonce },
+      data: { status: 'REJECTED', rejection_reason: 'Rechazada por el destinatario' },
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/v1/challenges/:nonce/cancel
+ * Sender withdraws a PENDING verification request they created.
+ * Guard: challenge must be PENDING and account_id must match caller's id.
+ */
+challengesRouter.patch('/:nonce/cancel', requireAccount, async (req, res, next) => {
+  try {
+    const { nonce } = req.params as { nonce: string };
+
+    const challenge = await prisma.challenge.findUnique({
+      where: { nonce },
+      select: { nonce: true, status: true, account_id: true },
+    });
+
+    if (!challenge) {
+      throw new AppError(404, 'Challenge not found', 'CHALLENGE_NOT_FOUND');
+    }
+    if (challenge.status !== 'PENDING') {
+      throw new AppError(409, 'Challenge is no longer pending', 'CHALLENGE_NOT_PENDING');
+    }
+    if (challenge.account_id !== req.account!.id) {
+      throw new AppError(403, 'You are not the owner of this challenge', 'FORBIDDEN');
+    }
+
+    await prisma.challenge.update({
+      where: { nonce },
+      data: { status: 'CANCELLED' },
+    });
+
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }

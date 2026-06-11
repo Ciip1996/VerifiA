@@ -506,6 +506,34 @@ class ApiService {
     }
   }
 
+  /// Recipient rejects an incoming PENDING challenge targeted at their email.
+  Future<void> rejectChallenge(String nonce) async {
+    try {
+      await _dio.patch('/api/v1/challenges/$nonce/reject');
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'rejectChallenge');
+    }
+  }
+
+  /// Sender cancels a PENDING challenge they created.
+  Future<void> cancelChallenge(String nonce) async {
+    try {
+      await _dio.patch('/api/v1/challenges/$nonce/cancel');
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'cancelChallenge');
+    }
+  }
+
+  /// Marks a challenge as IN_PROGRESS when the recipient begins verification.
+  /// Fire-and-forget: errors are swallowed by the caller.
+  Future<void> startChallenge(String nonce) async {
+    try {
+      await _dio.patch('/api/v1/challenges/$nonce/start');
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'startChallenge');
+    }
+  }
+
   Exception _handleDioError(DioException e, String method) {
     if (e.response != null) {
       final data = e.response!.data;

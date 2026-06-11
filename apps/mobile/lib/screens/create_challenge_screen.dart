@@ -201,7 +201,10 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
   Future<void> _share() async {
     final qrData = _challenge?['qr_data'] as String?;
-    final deepLink = _challenge?['deep_link'] as String? ?? '';
+    // Prefer the HTTPS redirect URL (clickable in WhatsApp/iMessage); fall back to deep link
+    final shareUrl = (_challenge?['redirect_url'] as String?)?.isNotEmpty == true
+        ? _challenge!['redirect_url'] as String
+        : _challenge?['deep_link'] as String? ?? '';
     final expiresAt = DateTime.tryParse(_challenge?['expires_at'] as String? ?? '');
     if (qrData == null || qrData.isEmpty || _sharing) return;
 
@@ -251,7 +254,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(tmpFile.path, mimeType: 'image/png', name: 'verifia_qr.png')],
-          text: _buildShareText(deepLink, expiresAt),
+          text: _buildShareText(shareUrl, expiresAt),
           sharePositionOrigin: origin,
         ),
       );
@@ -308,7 +311,9 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   }
 
   void _copyLink() {
-    final link = _challenge?['deep_link'] as String? ?? '';
+    final link = (_challenge?['redirect_url'] as String?)?.isNotEmpty == true
+        ? _challenge!['redirect_url'] as String
+        : _challenge?['deep_link'] as String? ?? '';
     Clipboard.setData(ClipboardData(text: link));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Link copiado al portapapeles'), duration: Duration(seconds: 2)),

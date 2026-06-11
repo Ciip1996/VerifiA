@@ -86,6 +86,55 @@ export interface ChallengeHistoryResponse {
   limit: number;
 }
 
+export interface IncomingChallengeRequester {
+  full_name: string | null;
+  email: string;
+  profile_photo: string | null;
+}
+
+export interface IncomingChallenge {
+  nonce: string;
+  requester: IncomingChallengeRequester;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface IncomingChallengesResponse {
+  items: IncomingChallenge[];
+}
+
+export interface AccountSearchResult {
+  id: string;
+  email: string;
+  full_name: string | null;
+  profile_photo: string | null;
+  id_type: string | null;
+  date_of_birth: string | null;
+  facetec_match_level: number | null;
+  is_self: boolean;
+}
+
+export interface PublicProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  date_of_birth: string | null;
+  id_type: string | null;
+  profile_photo: string | null;
+  id_front_photo: string | null;
+  facetec_match_level: number | null;
+}
+
+export interface AccountDetails {
+  id: string;
+  email: string;
+  full_name: string | null;
+  curp: string | null;
+  date_of_birth: string | null;
+  id_type: string | null;
+  profile_photo: string | null;
+}
+
 // ─── HTTP helper ──────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -140,6 +189,10 @@ export async function getChallengeHistory(page = 1): Promise<ChallengeHistoryRes
   return apiFetch<ChallengeHistoryResponse>(`/api/v1/challenges/history?page=${page}&limit=20`);
 }
 
+export async function cancelChallenge(nonce: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/api/v1/challenges/${nonce}/cancel`, { method: 'PATCH' });
+}
+
 // ─── Tokens ───────────────────────────────────────────────────────────────
 
 export async function getTokenStatus(nonce: string): Promise<TokenStatusResponse> {
@@ -150,4 +203,37 @@ export async function validateToken(nonce: string): Promise<ValidateResponse> {
   return apiFetch<ValidateResponse>(`/api/v1/tokens/validate/${nonce}`, {
     method: 'POST',
   });
+}
+
+// ─── Incoming challenges ──────────────────────────────────────────────────
+
+export async function getIncomingChallenges(): Promise<IncomingChallengesResponse> {
+  return apiFetch<IncomingChallengesResponse>('/api/v1/challenges/incoming');
+}
+
+export async function rejectChallenge(nonce: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/api/v1/challenges/${nonce}/reject`, { method: 'PATCH' });
+}
+
+export async function sendInvite(nonce: string, email: string): Promise<void> {
+  await apiFetch<void>('/api/v1/challenges/send-invite', {
+    method: 'POST',
+    body: JSON.stringify({ nonce, email }),
+  });
+}
+
+// ─── Accounts ─────────────────────────────────────────────────────────────
+
+export async function searchAccounts(q: string): Promise<{ results: AccountSearchResult[] }> {
+  return apiFetch<{ results: AccountSearchResult[] }>(
+    `/api/v1/accounts/search?q=${encodeURIComponent(q)}`,
+  );
+}
+
+export async function getPublicProfile(id: string): Promise<PublicProfile> {
+  return apiFetch<PublicProfile>(`/api/v1/accounts/${id}/public-profile`);
+}
+
+export async function getMeDetails(): Promise<AccountDetails> {
+  return apiFetch<AccountDetails>('/api/v1/auth/me');
 }

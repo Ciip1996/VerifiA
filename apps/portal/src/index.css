@@ -11,6 +11,7 @@
   --color-muted: #8888a0;
   --radius: 12px;
   --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --sidebar-width: 240px;
 }
 
 body {
@@ -22,3 +23,131 @@ body {
 
 a { color: var(--color-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* ── Layout shell ──────────────────────────────────────────────────────────── */
+
+.verifia-layout {
+  display: flex;
+  min-height: 100dvh;
+}
+
+.verifia-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.verifia-main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-height: 100dvh;
+}
+
+.verifia-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  color: var(--color-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+
+.verifia-nav-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.verifia-nav-item.active {
+  background: rgba(108,99,255,0.15);
+  color: #a8a4ff;
+}
+
+/* Mobile bottom nav */
+.verifia-topbar { display: none; }
+.verifia-bottom-nav { display: none; }
+
+@media (max-width: 768px) {
+  .verifia-sidebar { display: none; }
+
+  .verifia-main {
+    margin-left: 0;
+    padding-bottom: 68px;
+  }
+
+  .verifia-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    padding: 0 1rem;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .verifia-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    z-index: 100;
+    align-items: stretch;
+  }
+
+  .verifia-bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 0.62rem;
+    color: var(--color-muted);
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 0;
+    position: relative;
+  }
+
+  .verifia-bottom-nav-item:hover,
+  .verifia-bottom-nav-item.active { color: #a8a4ff; }
+}
+
+/* ── Shared utility ────────────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

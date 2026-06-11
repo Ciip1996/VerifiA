@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
+import { InboxProvider } from './context/InboxContext.tsx';
 import './index.css';
 
 const root = document.getElementById('root');
@@ -12,7 +13,9 @@ createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <InboxProvider>
+          <App />
+        </InboxProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>

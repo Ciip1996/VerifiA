@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
+import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
+import '../services/sent_challenges_service.dart';
 import 'presence_challenge_screen.dart';
 import 'verification_detail_screen.dart';
 
@@ -45,6 +48,7 @@ class _ReceivedTab extends StatefulWidget {
 
 class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClientMixin {
   final _inbox = InboxService.instance;
+  final _api = ApiService();
   bool _initialLoad = true;
 
   @override
@@ -73,6 +77,42 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PresenceChallengeScreen(nonce: c.nonce, verifierId: c.verifierId),
     ));
+  }
+
+  Future<void> _reject(IncomingChallenge c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Rechazar solicitud?'),
+        content: Text(
+          'Se notificará a ${c.requesterFullName ?? c.requesterEmail ?? "el solicitante"} que rechazaste la verificación.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+            child: const Text('Rechazar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _api.rejectChallenge(c.nonce);
+      _inbox.removeItem(c.nonce);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Solicitud rechazada'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}')),
+        );
+      }
+    }
   }
 
   @override
@@ -112,57 +152,225 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
           final c = items[i];
-          final expiresAt = DateTime.tryParse(c.expiresAt);
-          final minLeft = expiresAt != null ? expiresAt.difference(DateTime.now()).inMinutes : 0;
-
-          return Card(
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: cs.outlineVariant),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: _avatar(c, cs),
-              title: Text(
-                c.requesterFullName ?? c.requesterEmail ?? 'Solicitud anónima',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                c.requesterEmail != null && c.requesterFullName != null
-                    ? '${c.requesterEmail} · ${minLeft}m restantes'
-                    : '${minLeft}m restantes',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              trailing: FilledButton(
-                onPressed: () => _open(c),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Verificar'),
-              ),
-            ),
+          return _ReceivedCard(
+            challenge: c,
+            onVerify: () => _open(c),
+            onReject: () => _reject(c),
           );
         },
       ),
     );
   }
 
-  Widget _avatar(IncomingChallenge c, ColorScheme cs) {
-    if (c.requesterProfilePhoto != null && c.requesterProfilePhoto!.isNotEmpty) {
-      try {
-        return CircleAvatar(
-          backgroundImage: MemoryImage(base64Decode(c.requesterProfilePhoto!)),
-        );
-      } catch (_) {}
+}
+
+// ─── Received card with live countdown progress bar ───────────────────────────
+
+class _ReceivedCard extends StatefulWidget {
+  const _ReceivedCard({
+    required this.challenge,
+    required this.onVerify,
+    required this.onReject,
+  });
+  final IncomingChallenge challenge;
+  final VoidCallback onVerify;
+  final VoidCallback onReject;
+
+  @override
+  State<_ReceivedCard> createState() => _ReceivedCardState();
+}
+
+class _ReceivedCardState extends State<_ReceivedCard> {
+  Timer? _ticker;
+  late Duration _remaining;
+  late Duration _total;
+
+  @override
+  void initState() {
+    super.initState();
+    _compute();
+    // Tick every 10 seconds — fine-grained enough for a minute display
+    _ticker = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) setState(() => _compute());
+    });
+  }
+
+  void _compute() {
+    final expiresAt = DateTime.tryParse(widget.challenge.expiresAt);
+    if (expiresAt == null) {
+      _remaining = Duration.zero;
+      _total = const Duration(minutes: 30);
+      return;
     }
-    return CircleAvatar(
-      backgroundColor: cs.primaryContainer,
-      child: Text(
-        (c.requesterEmail?.substring(0, 1) ?? '?').toUpperCase(),
-        style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.bold),
+    final now = DateTime.now();
+    _remaining = expiresAt.difference(now);
+    if (_remaining.isNegative) _remaining = Duration.zero;
+
+    // Estimate total TTL: use createdAt if available, else assume 30 min
+    final createdAt = DateTime.tryParse(widget.challenge.createdAt);
+    _total = createdAt != null
+        ? expiresAt.difference(createdAt)
+        : const Duration(minutes: 30);
+    if (_total.inSeconds <= 0) _total = const Duration(minutes: 30);
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final c = widget.challenge;
+    final isExpired = _remaining.inSeconds <= 0;
+    final pct = (_remaining.inSeconds / _total.inSeconds).clamp(0.0, 1.0);
+
+    // Progress bar color
+    final Color barColor;
+    if (isExpired) {
+      barColor = cs.outlineVariant;
+    } else if (pct > 0.5) {
+      barColor = const Color(0xFF22C55E);
+    } else if (pct > 0.2) {
+      barColor = const Color(0xFFF59E0B);
+    } else {
+      barColor = const Color(0xFFEF4444);
+    }
+
+    // Time label
+    final String timeLabel;
+    if (isExpired) {
+      timeLabel = 'No verificada a tiempo — caducada';
+    } else if (_remaining.inHours >= 1) {
+      timeLabel = '${_remaining.inHours}h ${_remaining.inMinutes.remainder(60)}m restantes';
+    } else {
+      timeLabel = '${_remaining.inMinutes}m restantes';
+    }
+
+    // Avatar helper
+    Widget avatar() {
+      if (c.requesterProfilePhoto != null && c.requesterProfilePhoto!.isNotEmpty) {
+        try {
+          return CircleAvatar(
+            backgroundImage: MemoryImage(base64Decode(c.requesterProfilePhoto!)),
+          );
+        } catch (_) {}
+      }
+      return CircleAvatar(
+        backgroundColor: isExpired ? cs.surfaceContainerHighest : cs.primaryContainer,
+        child: Text(
+          (c.requesterEmail?.substring(0, 1) ?? '?').toUpperCase(),
+          style: TextStyle(
+            color: isExpired ? cs.onSurfaceVariant : cs.onPrimaryContainer,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isExpired ? cs.outlineVariant.withAlpha(100) : cs.outlineVariant,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: Column(children: [
+          // Card body
+          Opacity(
+            opacity: isExpired ? 0.55 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 10),
+              child: Row(children: [
+                avatar(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(
+                      c.requesterFullName ?? c.requesterEmail ?? 'Solicitud anónima',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: isExpired ? cs.onSurfaceVariant : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (c.requesterEmail != null && c.requesterFullName != null)
+                      Text(
+                        c.requesterEmail!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 3),
+                    Text(
+                      timeLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isExpired ? cs.onSurfaceVariant : barColor,
+                        fontWeight: isExpired ? FontWeight.normal : FontWeight.w600,
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: 8),
+                if (isExpired)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Caducada',
+                      style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
+                    ),
+                  )
+                else
+                  Column(mainAxisSize: MainAxisSize.min, children: [
+                    FilledButton(
+                      onPressed: widget.onVerify,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        minimumSize: const Size(90, 36),
+                      ),
+                      child: const Text('Verificar', style: TextStyle(fontSize: 13)),
+                    ),
+                    const SizedBox(height: 6),
+                    OutlinedButton(
+                      onPressed: widget.onReject,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        foregroundColor: const Color(0xFFC62828),
+                        side: const BorderSide(color: Color(0xFFC62828)),
+                        minimumSize: const Size(90, 36),
+                      ),
+                      child: const Text('Rechazar', style: TextStyle(fontSize: 13)),
+                    ),
+                  ]),
+              ]),
+            ),
+          ),
+
+          // Progress bar
+          LinearProgressIndicator(
+            value: isExpired ? 0.0 : pct,
+            minHeight: 4,
+            backgroundColor: cs.outlineVariant.withAlpha(60),
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+          ),
+        ]),
       ),
     );
   }
@@ -178,7 +386,7 @@ class _SentTab extends StatefulWidget {
 }
 
 class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
-  final _api = ApiService();
+  final _sentService = SentChallengesService.instance;
   List<SentChallenge> _items = [];
   bool _loading = true;
   String? _error;
@@ -189,17 +397,72 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
-    _load();
+    _sentService.addListener(_onServiceUpdate);
+    // If the service already has data, use it immediately
+    if (_sentService.items.isNotEmpty) {
+      _items = _sentService.items.where((c) => c.targetEmail != null).toList();
+      _loading = false;
+    } else {
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sentService.removeListener(_onServiceUpdate);
+    super.dispose();
+  }
+
+  void _onServiceUpdate() {
+    if (!mounted) return;
+    setState(() {
+      _items = _sentService.items.where((c) => c.targetEmail != null).toList();
+      _loading = false;
+    });
+  }
+
+  Future<void> _cancel(SentChallenge c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar solicitud?'),
+        content: Text(
+          'La solicitud enviada a ${c.targetEmail ?? 'este usuario'} será cancelada y ya no podrá ser verificada.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No, mantener')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancelar solicitud'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ApiService().cancelChallenge(c.nonce);
+      _sentService.updateStatus(c.nonce, 'CANCELLED');
+      FeedbackService.sent();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Solicitud cancelada'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}')),
+        );
+      }
+    }
   }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final all = await _api.getSentChallenges();
-      // Only show challenges that were sent to a specific person
-      final targeted = all.where((c) => c.targetEmail != null).toList();
+      await _sentService.refresh();
       if (!mounted) return;
-      setState(() { _items = targeted; _loading = false; });
+      setState(() { _loading = false; });
     } catch (e) {
       if (!mounted) return;
       setState(() { _loading = false; _error = e.toString().replaceFirst('Exception: ', ''); });
@@ -255,7 +518,11 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
           final c = _items[i];
-          return _SentCard(challenge: c, cs: cs);
+          return _SentCard(
+            challenge: c,
+            cs: cs,
+            onCancel: (c.status == 'PENDING' || c.status == 'IN_PROGRESS') ? () => _cancel(c) : null,
+          );
         },
       ),
     );
@@ -263,10 +530,11 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
 }
 
 class _SentCard extends StatelessWidget {
-  const _SentCard({required this.challenge, required this.cs});
+  const _SentCard({required this.challenge, required this.cs, this.onCancel});
 
   final SentChallenge challenge;
   final ColorScheme cs;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -275,10 +543,12 @@ class _SentCard extends StatelessWidget {
     final hasPhoto = challenge.subjectPhoto != null && challenge.subjectPhoto!.isNotEmpty;
 
     final (Color chipColor, String chipLabel, IconData chipIcon) = switch (status) {
-      'USED' => (const Color(0xFF2E7D32), 'Completada', Icons.check_circle_rounded),
-      'EXPIRED' => (const Color(0xFF757575), 'Expirada', Icons.schedule_rounded),
-      'REJECTED' => (const Color(0xFFC62828), 'Rechazada', Icons.cancel_rounded),
-      _ => (const Color(0xFFF57F17), 'Pendiente', Icons.hourglass_top_rounded),
+      'USED'        => (const Color(0xFF2E7D32), 'Completada',   Icons.check_circle_rounded),
+      'IN_PROGRESS' => (const Color(0xFF1565C0), 'Verificando',  Icons.sync_rounded),
+      'EXPIRED'     => (const Color(0xFF757575), 'Expirada',     Icons.schedule_rounded),
+      'REJECTED'    => (const Color(0xFFC62828), 'Rechazada',    Icons.cancel_rounded),
+      'CANCELLED'   => (const Color(0xFF757575), 'Cancelada',    Icons.block_rounded),
+      _             => (const Color(0xFFF57F17), 'Pendiente',    Icons.hourglass_top_rounded),
     };
 
     final card = Card(
@@ -332,7 +602,7 @@ class _SentCard extends StatelessWidget {
             ]),
           ),
           const SizedBox(width: 10),
-          // Status chip + chevron for completed
+          // Status chip + cancel icon (horizontal) + chevron for completed
           Row(mainAxisSize: MainAxisSize.min, children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -347,6 +617,25 @@ class _SentCard extends StatelessWidget {
                 Text(chipLabel, style: TextStyle(fontSize: 11, color: chipColor, fontWeight: FontWeight.w600)),
               ]),
             ),
+            if (onCancel != null) ...[
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: IconButton.outlined(
+                  onPressed: onCancel,
+                  padding: EdgeInsets.zero,
+                  iconSize: 14,
+                  style: IconButton.styleFrom(
+                    foregroundColor: cs.error,
+                    side: BorderSide(color: cs.error.withAlpha(100)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Cancelar solicitud',
+                ),
+              ),
+            ],
             if (isCompleted) ...[
               const SizedBox(width: 4),
               Icon(Icons.chevron_right_rounded, size: 18, color: cs.onSurfaceVariant),

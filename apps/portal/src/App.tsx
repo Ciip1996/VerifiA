@@ -1,5 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Layout } from './components/Layout.tsx';
 import { VerifierPage } from './pages/VerifierPage.tsx';
+import { SolicitudesPage } from './pages/SolicitudesPage.tsx';
+import { SearchPage } from './pages/SearchPage.tsx';
+import { PublicProfilePage } from './pages/PublicProfilePage.tsx';
+import { ProfilePage } from './pages/ProfilePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 
@@ -18,10 +23,16 @@ export default function App() {
         path="/"
         element={
           <AuthGuard>
-            <VerifierPage />
+            <Layout />
           </AuthGuard>
         }
-      />
+      >
+        <Route index element={<VerifierPage />} />
+        <Route path="solicitudes" element={<SolicitudesPage />} />
+        <Route path="buscar" element={<SearchPage />} />
+        <Route path="buscar/:accountId" element={<PublicProfilePage />} />
+        <Route path="perfil" element={<ProfilePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

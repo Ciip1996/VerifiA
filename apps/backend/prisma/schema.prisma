@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")  // pooled (pgbouncer) — used at runtime
+  directUrl = env("DIRECT_URL")    // direct connection — used by prisma migrate
 }
 
 // ─── Account ──────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ model Challenge {
   nonce            String   @unique
   verifier_id      String   // maps to JWT `aud`; also the portal's API key or account email
   exp_time         DateTime
-  status           String   @default("PENDING") // PENDING | USED | EXPIRED | REJECTED
+  status           String   @default("PENDING") // PENDING | IN_PROGRESS | USED | EXPIRED | REJECTED | CANCELLED
   account_id       String?  // Account that created this challenge (null for API-key created)
   target_email     String?  // Email of user being asked to verify (for incoming validations)
   rejection_reason String?  // Set when status = REJECTED (e.g. FaceTec score too low)

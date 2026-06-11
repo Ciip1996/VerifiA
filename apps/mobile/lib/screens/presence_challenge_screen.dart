@@ -69,6 +69,10 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
 
   Future<void> _startFlow() async {
     try {
+      // Signal to the backend (and the sender) that verification has begun.
+      // Fire-and-forget: don't block the flow if this fails.
+      _api.startChallenge(widget.nonce).catchError((_) {});
+
       // Ensure App Attest key is registered before the flow starts.
       // Idempotent — no-op if already registered on startup.
       await _appAttest.registerIfNeeded(_api);
