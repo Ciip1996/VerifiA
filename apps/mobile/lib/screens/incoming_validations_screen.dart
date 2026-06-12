@@ -109,7 +109,7 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }
@@ -451,7 +451,7 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }
@@ -465,7 +465,7 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
       setState(() { _loading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = e.toString().replaceFirst('Exception: ', ''); });
+      setState(() { _loading = false; _error = friendlyError(e); });
     }
   }
 

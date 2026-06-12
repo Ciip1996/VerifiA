@@ -26,6 +26,9 @@ class SentChallengesService extends ChangeNotifier {
 
   List<SentChallenge> _items = [];
 
+  /// True while consecutive poll attempts are failing due to network errors.
+  bool isOffline = false;
+
   /// Statuses we last saw for each nonce (tracked to detect transitions).
   final Map<String, String> _lastStatus = {};
 
@@ -69,8 +72,14 @@ class SentChallengesService extends ChangeNotifier {
       final fresh = await _api.getSentChallenges();
       _detectTransitions(fresh);
       _items = fresh;
+      if (isOffline) isOffline = false; // back online
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      if (e is NetworkException && e.isNetwork) {
+        isOffline = true;
+        notifyListeners();
+      }
+    }
   }
 
   void _detectTransitions(List<SentChallenge> fresh) {

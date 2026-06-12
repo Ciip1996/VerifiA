@@ -9,6 +9,29 @@ const _baseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:3001',
 );
 
+/// Thrown for all network-level failures (no response received).
+/// [isNetwork] is true when the server was unreachable (timeout, no route).
+class NetworkException implements Exception {
+  final String message;
+  final bool isNetwork;
+  const NetworkException(this.message, {this.isNetwork = false});
+  @override
+  String toString() => message;
+}
+
+/// Top-level helper — maps any thrown object to a user-friendly Spanish string.
+/// Import this wherever raw error strings are shown to the user.
+String friendlyError(Object e) {
+  if (e is NetworkException) return e.message;
+  final s = e.toString().replaceFirst('Exception: ', '');
+  final lower = s.toLowerCase();
+  if (lower.contains('timeout') || lower.contains('no connection') ||
+      lower.contains('network') || lower.contains('connection')) {
+    return 'Sin conexión. Verifica tu red e intenta de nuevo.';
+  }
+  return s;
+}
+
 class IssueTokenResponse {
   final String token;
   final int expiresIn;
@@ -550,13 +573,22 @@ class ApiService {
         type == DioExceptionType.sendTimeout ||
         type == DioExceptionType.receiveTimeout) {
       debugPrint('[ApiService] $method timeout');
-      return Exception('Network error: timeout connecting to server');
+      return const NetworkException(
+        'El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.',
+        isNetwork: true,
+      );
     }
     if (type == DioExceptionType.connectionError) {
       debugPrint('[ApiService] $method connection error: ${e.message}');
-      return Exception('Network error: no connection to server');
+      return const NetworkException(
+        'No se pudo conectar al servidor. Verifica que estés en la misma red e intenta de nuevo.',
+        isNetwork: true,
+      );
     }
     debugPrint('[ApiService] $method network error: ${e.message}');
-    return Exception('Network error: ${e.message}');
+    return const NetworkException(
+      'Error de red inesperado. Intenta de nuevo.',
+      isNetwork: true,
+    );
   }
 }

@@ -157,15 +157,15 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _errorMessage = _friendlyError(e.toString());
+        _errorMessage = _mapFlowError(e);
       });
     }
   }
 
-  String _friendlyError(String raw) {
-    if (raw.contains('Network error') || raw.contains('connection')) {
-      return 'Sin conexión. Verifica tu red e intenta de nuevo.';
-    }
+  String _mapFlowError(Object e) {
+    // Network-level errors: use the global friendly message.
+    if (e is NetworkException) return e.message;
+    final raw = e.toString();
     if (raw.contains('NONCE_NOT_FOUND') || raw.contains('not found')) {
       return 'El código QR ya no es válido. Pide uno nuevo.';
     }
@@ -178,7 +178,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
     if (raw.contains('PASSKEY') || raw.contains('challenge')) {
       return 'Error en la autorización biométrica.';
     }
-    return raw.replaceAll('Exception: ', '');
+    return friendlyError(e);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────

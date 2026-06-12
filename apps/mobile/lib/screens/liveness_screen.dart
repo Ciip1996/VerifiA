@@ -51,6 +51,12 @@ class _LivenessScreenState extends State<LivenessScreen>
   Object? _countdown; // String 'ready' | int 3|2|1|0
   bool _flashVisible = false;
 
+  // ─── Photo quality retry ───────────────────────────────────────────────────
+  /// Reason shown when a captured photo is rejected (null = none)
+  String? _photoRejectionReason;
+  int _photoAttempts = 0;
+  static const _maxPhotoAttempts = 3;
+
   static const _centerYaw = 15.0;  // degrees
   static const _turnYaw   = 20.0;  // degrees
   static const _centerFrames = 45;
@@ -83,7 +89,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     _detector = FaceDetector(
       options: FaceDetectorOptions(
         performanceMode: FaceDetectorMode.fast,
-        enableClassification: false,
+        enableClassification: true,  // needed for eye-open probability
         enableLandmarks: false,
         enableTracking: false,
       ),
@@ -221,7 +227,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     } catch (_) {}
 
     // ── Step 1: "¡Prepárate para la foto!" ─────────────────────────────────
-    if (mounted) setState(() => _countdown = 'ready');
+    if (mounted) setState(() { _countdown = 'ready'; _photoRejectionReason = null; });
     await Future.delayed(const Duration(milliseconds: 900));
 
     // ── Step 2: 3 – 2 – 1 countdown ────────────────────────────────────────
@@ -235,37 +241,105 @@ class _LivenessScreenState extends State<LivenessScreen>
       await Future.delayed(const Duration(milliseconds: 950));
     }
 
-    // ── Step 3: White flash → take photo ───────────────────────────────────
-    if (!mounted) return;
-    _biometricsChannel.invokeMethod<bool>('playSuccess').catchError((_) {
-      HapticFeedback.heavyImpact();
-      return false;
-    });
-    setState(() { _countdown = 0; _flashVisible = true; });
-    await Future.delayed(const Duration(milliseconds: 120));
-    if (mounted) setState(() => _flashVisible = false);
+    // ── Step 3: take + quality-check loop ───────────────────────────────────
+    await _captureLoop();
+  }
 
-    String snapshotBase64 = '';
-    try {
-      if (_cam != null && _cam!.value.isInitialized) {
-        final file = await _cam!.takePicture();
-        final bytes = await file.readAsBytes();
-        snapshotBase64 = base64Encode(bytes);
+  Future<void> _captureLoop() async {
+    while (_photoAttempts < _maxPhotoAttempts) {
+      if (!mounted) return;
+      _photoAttempts++;
+
+      // Flash + haptic
+      _biometricsChannel.invokeMethod<bool>('playSuccess').catchError((_) {
+        HapticFeedback.heavyImpact();
+        return false;
+      });
+      setState(() { _countdown = 0; _flashVisible = true; });
+      await Future.delayed(const Duration(milliseconds: 120));
+      if (mounted) setState(() => _flashVisible = false);
+
+      // Capture still
+      String snapshotBase64 = '';
+      String? capturedPath;
+      try {
+        if (_cam != null && _cam!.value.isInitialized) {
+          final file = await _cam!.takePicture();
+          capturedPath = file.path;
+          final bytes = await file.readAsBytes();
+          snapshotBase64 = base64Encode(bytes);
+        }
+      } catch (e) {
+        debugPrint('[Liveness] takePicture failed: $e');
       }
-    } catch (e) {
-      debugPrint('[Liveness] takePicture failed: $e');
-    }
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    Navigator.of(context).pop(FaceTecResult(
-      sessionId:
-          'mlkit-${widget.nonce.substring(0, 16)}-${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
-      faceScanBase64: snapshotBase64.isNotEmpty
-          ? snapshotBase64
-          : 'mlkit-liveness-${widget.nonce.substring(0, 8)}',
-      auditTrailImageBase64: snapshotBase64.isNotEmpty ? snapshotBase64 : null,
-    ));
+      // Quality check on the still image via ML Kit
+      if (capturedPath != null) {
+        final rejection = await _checkPhotoQuality(capturedPath);
+        if (rejection != null && _photoAttempts < _maxPhotoAttempts) {
+          // Rejected — tell the user and retry with a short 1-second countdown
+          if (mounted) {
+            setState(() {
+              _photoRejectionReason = rejection;
+              _countdown = null;
+            });
+            HapticFeedback.mediumImpact();
+          }
+          await Future.delayed(const Duration(milliseconds: 1400));
+          if (!mounted) return;
+          // Single-digit retry countdown
+          for (final n in [2, 1]) {
+            if (!mounted) return;
+            setState(() { _countdown = n; _photoRejectionReason = null; });
+            await Future.delayed(const Duration(milliseconds: 800));
+          }
+          continue; // retake
+        }
+      }
+
+      // Accepted (or max attempts reached — proceed anyway)
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      Navigator.of(context).pop(FaceTecResult(
+        sessionId:
+            'mlkit-${widget.nonce.substring(0, 16)}-${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
+        faceScanBase64: snapshotBase64.isNotEmpty
+            ? snapshotBase64
+            : 'mlkit-liveness-${widget.nonce.substring(0, 8)}',
+        auditTrailImageBase64: snapshotBase64.isNotEmpty ? snapshotBase64 : null,
+      ));
+      return;
+    }
+  }
+
+  /// Returns a Spanish rejection reason if the photo fails quality, or null if OK.
+  Future<String?> _checkPhotoQuality(String imagePath) async {
+    try {
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final faces = await _detector.processImage(inputImage);
+
+      if (faces.isEmpty) return 'No se detectó rostro — acércate un poco';
+
+      final face = faces.first;
+
+      // Eyes open check
+      final leftEye  = face.leftEyeOpenProbability  ?? 1.0;
+      final rightEye = face.rightEyeOpenProbability ?? 1.0;
+      if (leftEye < 0.6 || rightEye < 0.6) {
+        return 'Abre los ojos para la foto';
+      }
+
+      // Head orientation: not too turned / tilted
+      final yaw   = face.headEulerAngleY ?? 0;
+      final pitch = face.headEulerAngleX ?? 0;
+      if (yaw.abs() > 22) return 'Mira de frente a la cámara';
+      if (pitch.abs() > 20) return 'Endereza la cabeza';
+
+      return null; // all good
+    } catch (e) {
+      debugPrint('[Liveness] quality check failed: $e');
+      return null; // don't block on detection errors
+    }
   }
 
   // ─── Fallback ──────────────────────────────────────────────────────────────
@@ -306,6 +380,7 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   String get _instruction {
     if (_fallbackMode) return 'Verificando presencia...';
+    if (_photoRejectionReason != null) return _photoRejectionReason!;
     if (_countdown == 'ready') return '¡Prepárate para la foto!';
     if (_countdown is int && (_countdown as int) > 0) return '';
     if (_countdown == 0) return '¡Foto!';
@@ -315,6 +390,11 @@ class _LivenessScreenState extends State<LivenessScreen>
       _Stage.returnCenter => 'Regresa al centro',
       _Stage.done         => '¡Verificación completada!',
     };
+  }
+
+  Color get _instructionColor {
+    if (_photoRejectionReason != null) return const Color(0xFFFF6B6B);
+    return _isDone ? const Color(0xFF22C55E) : Colors.white;
   }
 
   double get _globalProgress {
@@ -547,11 +627,10 @@ class _LivenessScreenState extends State<LivenessScreen>
             duration: const Duration(milliseconds: 300),
             child: Text(
               _instruction,
-              key: ValueKey(_fallbackMode ? 'fb' : _stage.name),
+              key: ValueKey(_photoRejectionReason ?? (_fallbackMode ? 'fb' : _stage.name)),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color:
-                    _isDone ? const Color(0xFF22C55E) : Colors.white,
+                color: _instructionColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 height: 1.4,

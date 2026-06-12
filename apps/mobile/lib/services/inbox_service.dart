@@ -20,6 +20,9 @@ class InboxService extends ChangeNotifier {
   Set<String> _seenNonces = {};
   int _unseenCount = 0;
 
+  /// True while consecutive poll attempts are failing due to network errors.
+  bool isOffline = false;
+
   /// The most recently arrived challenge (cleared after [consumeLatestNew]).
   IncomingChallenge? _latestNew;
 
@@ -73,9 +76,14 @@ class InboxService extends ChangeNotifier {
         _latestNew = newItems.first;
       }
 
+      if (isOffline) isOffline = false; // back online
       notifyListeners();
-    } catch (_) {
-      // Fail silently — connectivity errors shouldn't crash the service.
+    } catch (e) {
+      if (e is NetworkException && e.isNetwork) {
+        isOffline = true;
+        notifyListeners();
+      }
+      // Other errors (e.g. auth) fail silently.
     }
   }
 }

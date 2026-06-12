@@ -31,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _inbox = InboxService.instance;
   final _sent = SentChallengesService.instance;
 
+  bool get _isOffline => _inbox.isOffline || _sent.isOffline;
+
   @override
   void initState() {
     super.initState();
@@ -254,23 +256,58 @@ class _HomeScreenState extends State<HomeScreen> {
       // QRScannerScreen is mounted/unmounted on tab switch so the OS camera
       // session is fully released when leaving tab 0.
       // The other three tabs use IndexedStack so their state survives tab changes.
-      body: Stack(
-        fit: StackFit.expand,
+      body: Column(
         children: [
-          // Tabs 1-3: kept alive behind an Offstage when scanner is visible
-          Offstage(
-            offstage: _tabIndex == 0,
-            child: IndexedStack(
-              index: (_tabIndex - 1).clamp(0, 2),
-              children: const [
-                CreateChallengeScreen(),
-                IncomingValidationsScreen(),
-                UserSearchScreen(),
+          // ── Offline banner ───────────────────────────────────────────────
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            height: _isOffline ? 38 : 0,
+            color: const Color(0xFFB71C1C),
+            child: _isOffline
+                ? SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.wifi_off_rounded, color: Colors.white, size: 15),
+                        SizedBox(width: 7),
+                        Text(
+                          'Sin conexión con el servidor',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          // ── Tab content ──────────────────────────────────────────────────
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Tabs 1-3: kept alive behind an Offstage when scanner is visible
+                Offstage(
+                  offstage: _tabIndex == 0,
+                  child: IndexedStack(
+                    index: (_tabIndex - 1).clamp(0, 2),
+                    children: const [
+                      CreateChallengeScreen(),
+                      IncomingValidationsScreen(),
+                      UserSearchScreen(),
+                    ],
+                  ),
+                ),
+                // Tab 0: scanner is only in the tree when actively selected
+                if (_tabIndex == 0) const QRScannerScreen(),
               ],
             ),
           ),
-          // Tab 0: scanner is only in the tree when actively selected
-          if (_tabIndex == 0) const QRScannerScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -346,18 +383,16 @@ class _LoginScreenState extends State<_LoginScreen> {
         password.isNotEmpty;
   }
 
-  String _mapError(String raw) {
-    final msg = raw.replaceFirst('Exception: ', '').toLowerCase();
+  String _mapLoginError(Object e) {
+    if (e is NetworkException) return e.message;
+    final msg = e.toString().replaceFirst('Exception: ', '').toLowerCase();
     if (msg.contains('invalid_credentials') || msg.contains('unauthorized') || msg.contains('401')) {
       return 'Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.';
     }
     if (msg.contains('account_not_found') || msg.contains('404')) {
       return 'No existe una cuenta con ese correo electrónico.';
     }
-    if (msg.contains('timeout') || msg.contains('no connection') || msg.contains('network')) {
-      return 'Sin conexión. Verifica tu red e intenta de nuevo.';
-    }
-    return 'Error del servidor. Intenta más tarde.';
+    return friendlyError(e);
   }
 
   Future<void> _login() async {
@@ -378,7 +413,7 @@ class _LoginScreenState extends State<_LoginScreen> {
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } catch (e) {
-      setState(() { _error = _mapError(e.toString()); _loading = false; });
+      setState(() { _error = _mapLoginError(e); _loading = false; });
     }
   }
 

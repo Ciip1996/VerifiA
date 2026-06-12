@@ -67,7 +67,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMsg = 'Error inesperado: $e';
+        _errorMsg = friendlyError(e);
         _step = _Step.form;
       });
     }
@@ -127,7 +127,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     } catch (e) {
       setState(() {
-        _errorMsg = e.toString().replaceFirst('Exception: ', '');
+        _errorMsg = friendlyError(e);
         _step = _Step.preview;
       });
     }

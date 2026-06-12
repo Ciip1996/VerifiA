@@ -191,7 +191,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMsg = e.toString().replaceFirst('Exception: ', '');
+        _errorMsg = friendlyError(e);
         _loading = false;
       });
     }
@@ -304,7 +304,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       if (mounted) {
         setState(() => _sendingInvite = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al enviar: ${e.toString().replaceFirst('Exception: ', '')}')),
+          SnackBar(content: Text('Error al enviar: ${friendlyError(e)}')),
         );
       }
     }
