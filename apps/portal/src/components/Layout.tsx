@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useInbox } from '../context/InboxContext.tsx';
+import { useSentChanges } from '../context/SentChangesContext.tsx';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -141,7 +143,8 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const { account, logout } = useAuth();
-  const { unseenCount } = useInbox();
+  const { unseenCount, isOffline, latestNew, consumeLatestNew } = useInbox();
+  const { latestChange, consumeLatestChange } = useSentChanges();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -153,8 +156,69 @@ export function Layout() {
     '/solicitudes': unseenCount,
   };
 
+  // Auto-dismiss challenge banner after 6s
+  useEffect(() => {
+    if (!latestNew) return;
+    const id = setTimeout(consumeLatestNew, 6000);
+    return () => clearTimeout(id);
+  }, [latestNew, consumeLatestNew]);
+
+  // Auto-dismiss sent-change banner after 6s
+  useEffect(() => {
+    if (!latestChange) return;
+    const id = setTimeout(consumeLatestChange, 6000);
+    return () => clearTimeout(id);
+  }, [latestChange, consumeLatestChange]);
+
   return (
     <div className="verifia-layout">
+
+      {/* ── Offline banner ───────────────────────────────────────────────── */}
+      {isOffline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, height: 36, zIndex: 500,
+          background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '0.82rem', color: '#fff', fontWeight: 600, animation: 'slideDown 0.35s ease',
+        }}>
+          Sin conexión con el servidor
+        </div>
+      )}
+
+      {/* ── Incoming challenge banner ────────────────────────────────────── */}
+      {latestNew && (
+        <div style={{
+          position: 'fixed', top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 499,
+          background: 'var(--color-surface)', borderBottom: '1px solid rgba(108,99,255,0.35)',
+          padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          animation: 'slideDown 0.35s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(108,99,255,0.2)', border: '2px solid rgba(108,99,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.7rem', fontWeight: 700, color: '#a8a4ff' }}>
+            {(latestNew.requester.full_name ?? latestNew.requester.email).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+          </div>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
+            <strong>{latestNew.requester.full_name ?? latestNew.requester.email}</strong> te solicita verificar tu identidad
+          </span>
+          <button onClick={consumeLatestNew} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Descartar</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestNew(); }} style={{ background: 'rgba(108,99,255,0.15)', border: '1px solid rgba(108,99,255,0.3)', color: '#a8a4ff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
+        </div>
+      )}
+
+      {/* ── Sent-change banner ───────────────────────────────────────────── */}
+      {latestChange && !latestNew && (
+        <div style={{
+          position: 'fixed', top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 498,
+          background: 'var(--color-surface)', borderBottom: '1px solid rgba(245,158,11,0.35)',
+          padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          animation: 'slideDown 0.35s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
+            <strong>{latestChange.targetEmail ?? 'Alguien'}</strong>{' '}
+            {latestChange.newStatus === 'REJECTED' ? 'rechazó' : 'canceló'} tu solicitud de verificación.
+          </span>
+          <button onClick={consumeLatestChange} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Descartar</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestChange(); }} style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
+        </div>
+      )}
 
       {/* ── Desktop Sidebar ──────────────────────────────────────────────── */}
       <aside className="verifia-sidebar">

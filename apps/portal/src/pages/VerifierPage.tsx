@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import {
   createChallenge,
   sendInvite,
@@ -411,6 +411,7 @@ function PendingView({
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [sendingInvite, setSendingInvite] = useState(false);
   const consumedRef = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Countdown
   useEffect(() => {
@@ -476,16 +477,35 @@ function PendingView({
     }
   }
 
+  function shareText() {
+    const expDate = new Date(challenge.expires_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+    return `Te invito a verificar tu identidad con VerifiA.\nExpira: ${expDate}\nLink: ${challenge.qr_data}`;
+  }
+
   function handleShare() {
     if (navigator.share) {
-      void navigator.share({ title: 'Verificar identidad — VerifiA', url: challenge.qr_data });
+      void navigator.share({ title: 'Verificar identidad — VerifiA', text: shareText(), url: challenge.qr_data });
     } else {
-      void navigator.clipboard.writeText(challenge.qr_data).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+      void navigator.clipboard.writeText(shareText()).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
     }
   }
 
   function handleCopy() {
     void navigator.clipboard.writeText(challenge.qr_data).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }
+
+  function handleDownloadQR() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `verifia-qr-${challenge.nonce.slice(0, 8)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   }
 
   const pct = timeLeft / challenge.expires_in;
@@ -504,6 +524,15 @@ function PendingView({
 
   return (
     <div style={{ textAlign: 'center' }}>
+      {/* Hidden canvas for QR PNG download */}
+      <div style={{ position: 'absolute', left: -9999, top: -9999 }}>
+        <QRCodeCanvas
+          ref={(node) => { canvasRef.current = node as unknown as HTMLCanvasElement; }}
+          value={challenge.qr_data}
+          size={512}
+        />
+      </div>
+
       {/* Targeted badge */}
       {targetEmail && (
         <div style={{
@@ -576,6 +605,9 @@ function PendingView({
               ↑ Compartir
             </button>
           )}
+          <button onClick={handleDownloadQR} style={actionBtnStyle('rgba(108,99,255,0.15)', 'rgba(108,99,255,0.4)', '#a8a4ff')}>
+            ⬇ Descargar QR
+          </button>
         </div>
       )}
 

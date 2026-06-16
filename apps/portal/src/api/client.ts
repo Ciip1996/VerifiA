@@ -65,8 +65,9 @@ export interface ChallengeHistoryToken {
 
 export interface ChallengeHistorySubject {
   full_name: string;
-  profile_photo: string;
-  id_type: string;
+  profile_photo: string | null;
+  id_type: string | null;
+  id_front_photo: string | null;
 }
 
 export interface ChallengeHistoryItem {

@@ -11,11 +11,17 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
-  useEffect(() => {
+  function loadDetails() {
+    setError(null);
+    setLoading(true);
     getMeDetails()
       .then(setDetails)
       .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar perfil'))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadDetails();
   }, []);
 
   function handleLogout() {
@@ -45,8 +51,16 @@ export function ProfilePage() {
       )}
 
       {error && (
-        <div style={{ padding: '0.7rem 0.9rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-          {error}
+        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          <div style={{ padding: '0.7rem 0.9rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            {error}
+          </div>
+          <button
+            onClick={loadDetails}
+            style={{ padding: '0.55rem 1.25rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.88rem' }}
+          >
+            ↻ Reintentar
+          </button>
         </div>
       )}
 

@@ -35,10 +35,14 @@ All code changes are done. The steps below are manual external tasks you must co
    | `JWT_PUBLIC_KEY_PEM` | Your existing public key |
    | `NODE_ENV` | `production` |
    | `VERIFIA_SKIP_ATTEST` | `false` |
-   | `CORS_ORIGIN` | Your portal Vercel URL (e.g. `https://verifia.vercel.app`) |
+   | `CORS_ORIGIN` | Your portal Vercel URL (e.g. `https://verifia-portal.vercel.app`) |
+   | `API_BASE_URL` | Your **backend** Vercel URL (e.g. `https://verifia-api.vercel.app`) — used to build every QR redirect link; QR codes will be broken without this |
+   | `RESEND_API_KEY` | Your Resend API key (get at resend.com) — required for email invitations |
    | `APPLE_TEAM_ID` | Your Apple Developer Team ID |
    | `APPLE_BUNDLE_ID` | `com.verifia.verifiaMobile` |
-   | Any other keys from `.env.example` | Production values |
+   | `TOKEN_TTL_SECONDS` | `300` (5 min) |
+   | `CHALLENGE_TTL_SECONDS` | `600` (10 min) |
+   | Any FaceTec / other keys from `.env.example` | Production values |
 
 5. Click **Deploy** once to confirm it works
 6. Go to **Settings → General** and copy:
@@ -85,7 +89,7 @@ All code changes are done. The steps below are manual external tasks you must co
    - Platform: iOS
    - Bundle ID: `com.verifia.verifiaMobile`
    - SKU: `verifia-mobile`
-3. After creation, go to **App Information** and copy the **Apple ID (numeric)** → `ITC_TEAM_ID`
+3. After creation, go to **App Information** and note the **Apple ID (numeric)** — this is for reference only; the CI doesn't need it as a secret (Fastlane discovers it automatically via the App Store Connect API key)
 
 ---
 

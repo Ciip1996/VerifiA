@@ -14,6 +14,9 @@ interface InboxContextValue {
   items: IncomingChallenge[];
   unseenCount: number;
   loading: boolean;
+  isOffline: boolean;
+  latestNew: IncomingChallenge | null;
+  consumeLatestNew: () => void;
   markAllSeen: () => void;
   refresh: () => Promise<void>;
 }
@@ -21,29 +24,53 @@ interface InboxContextValue {
 const InboxContext = createContext<InboxContextValue | null>(null);
 
 const POLL_INTERVAL_MS = 5000;
+const OFFLINE_THRESHOLD = 2;
 
 export function InboxProvider({ children }: { children: ReactNode }) {
   const { sessionToken } = useAuth();
   const [items, setItems] = useState<IncomingChallenge[]>([]);
   const [seenNonces, setSeenNonces] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [latestNew, setLatestNew] = useState<IncomingChallenge | null>(null);
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const consecutiveFailuresRef = useRef(0);
+  // Track previous nonces to detect newly arrived items
+  const prevNoncesRef = useRef<Set<string>>(new Set());
 
   const fetchIncoming = useCallback(async () => {
     if (!sessionToken) return;
     try {
       const res = await getIncomingChallenges();
-      setItems(res.items);
+      consecutiveFailuresRef.current = 0;
+      setIsOffline(false);
+
+      // Detect newly arrived items (nonces not seen before at all)
+      const incoming = res.items;
+      const newItem = incoming.find(
+        (i) => !prevNoncesRef.current.has(i.nonce) && !seenNonces.has(i.nonce),
+      );
+      if (newItem) setLatestNew(newItem);
+
+      // Update prev nonces to current full set
+      prevNoncesRef.current = new Set(incoming.map((i) => i.nonce));
+      setItems(incoming);
     } catch {
-      // network hiccup — keep polling
+      consecutiveFailuresRef.current += 1;
+      if (consecutiveFailuresRef.current >= OFFLINE_THRESHOLD) {
+        setIsOffline(true);
+      }
     } finally {
       setLoading(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, seenNonces]);
 
   useEffect(() => {
     if (!sessionToken) {
       setItems([]);
+      setIsOffline(false);
+      prevNoncesRef.current = new Set();
       return;
     }
     setLoading(true);
@@ -60,13 +87,17 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     setSeenNonces(new Set(items.map((i) => i.nonce)));
   }, [items]);
 
+  const consumeLatestNew = useCallback(() => {
+    setLatestNew(null);
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     await fetchIncoming();
   }, [fetchIncoming]);
 
   return (
-    <InboxContext.Provider value={{ items, unseenCount, loading, markAllSeen, refresh }}>
+    <InboxContext.Provider value={{ items, unseenCount, loading, isOffline, latestNew, consumeLatestNew, markAllSeen, refresh }}>
       {children}
     </InboxContext.Provider>
   );

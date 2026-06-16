@@ -8,6 +8,7 @@ import {
 } from '../api/client.ts';
 import { useInbox } from '../context/InboxContext.tsx';
 import { IdentityCard, PhotoBox, EmptyPhotoBox } from '../components/IdentityCard.tsx';
+import { PhotoLightbox } from '../components/PhotoLightbox.tsx';
 
 type TabId = 'recibidas' | 'enviadas';
 
@@ -59,58 +60,130 @@ export function SolicitudesPage() {
   );
 }
 
+// ─── Confirm Dialog ────────────────────────────────────────────────────────────
+
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  confirmColor,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  confirmColor: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
+      <div
+        onClick={onCancel}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 600 }}
+      />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        width: 'min(420px, calc(100vw - 2rem))', background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)', borderRadius: 16, padding: '1.5rem',
+        zIndex: 601, boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+      }}>
+        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem' }}>{title}</div>
+        <div style={{ fontSize: '0.88rem', color: 'var(--color-muted)', marginBottom: '1.25rem' }}>{body}</div>
+        <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.88rem' }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ padding: '0.5rem 1rem', borderRadius: 8, border: `1px solid ${confirmColor}50`, background: `${confirmColor}15`, color: confirmColor, cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Recibidas tab ────────────────────────────────────────────────────────────
 
 function RecibidasTab() {
   const { items, loading, refresh } = useInbox();
   const [rejecting, setRejecting] = useState<string | null>(null);
+  const [confirmNonce, setConfirmNonce] = useState<string | null>(null);
 
-  async function handleReject(nonce: string) {
-    if (!window.confirm('¿Rechazar esta solicitud de verificación?')) return;
+  async function doReject(nonce: string) {
+    setConfirmNonce(null);
     setRejecting(nonce);
     try {
       await rejectChallenge(nonce);
       await refresh();
     } catch {
-      window.alert('No se pudo rechazar. Intenta de nuevo.');
+      // no-op; user can retry
     } finally {
       setRejecting(null);
     }
   }
 
-  if (loading && items.length === 0) {
-    return <LoadingSpinner />;
-  }
-
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        icon="📬"
-        title="No tienes solicitudes pendientes"
-        subtitle="Cuando alguien te solicite verificar tu identidad, aparecerá aquí."
-        onRefresh={refresh}
-      />
-    );
-  }
-
   return (
-    <div>
-      {/* Info banner */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
-        background: 'rgba(108,99,255,0.08)', border: '1px solid rgba(108,99,255,0.25)',
-        borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#a8a4ff',
-      }}>
-        <span style={{ flexShrink: 0 }}>📱</span>
-        <span>Para completar la verificación, escanea el QR con la app VerifiA en tu iPhone.</span>
+    <>
+      {confirmNonce && (
+        <ConfirmDialog
+          title="Rechazar solicitud"
+          body="¿Deseas rechazar esta solicitud de verificación? Esta acción no se puede deshacer."
+          confirmLabel="Rechazar"
+          confirmColor="#ef4444"
+          onConfirm={() => void doReject(confirmNonce)}
+          onCancel={() => setConfirmNonce(null)}
+        />
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+        <button
+          onClick={() => void refresh()}
+          disabled={loading}
+          style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: loading ? 0.6 : 1 }}
+        >
+          ↻ Actualizar
+        </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {items.map((item) => (
-          <IncomingCard key={item.nonce} item={item} onReject={handleReject} rejecting={rejecting} />
-        ))}
-      </div>
-    </div>
+      {loading && items.length === 0 ? (
+        <LoadingSpinner />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon="📬"
+          title="No tienes solicitudes pendientes"
+          subtitle="Cuando alguien te solicite verificar tu identidad, aparecerá aquí."
+        />
+      ) : (
+        <div>
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+            background: 'rgba(108,99,255,0.08)', border: '1px solid rgba(108,99,255,0.25)',
+            borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#a8a4ff',
+          }}>
+            <span style={{ flexShrink: 0 }}>📱</span>
+            <span>Para completar la verificación, escanea el QR con la app VerifiA en tu iPhone.</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {items.map((item) => (
+              <IncomingCard
+                key={item.nonce}
+                item={item}
+                onReject={(n) => setConfirmNonce(n)}
+                rejecting={rejecting}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -160,7 +233,6 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
         </button>
       </div>
 
-      {/* Countdown bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct * 100}%`, background: barColor, borderRadius: 3, transition: 'width 1s linear, background 0.3s' }} />
@@ -182,6 +254,7 @@ function EnviadasTab() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [detail, setDetail] = useState<ChallengeHistoryItem | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -201,14 +274,14 @@ function EnviadasTab() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [load]);
 
-  async function handleCancel(nonce: string) {
-    if (!window.confirm('¿Cancelar esta solicitud de verificación pendiente?')) return;
+  async function doCancel(nonce: string) {
+    setConfirmCancel(null);
     setCancelling(nonce);
     try {
       await cancelChallenge(nonce);
       setItems((prev) => prev.map((i) => i.nonce === nonce ? { ...i, status: 'CANCELLED' } : i));
     } catch {
-      window.alert('No se pudo cancelar. Intenta de nuevo.');
+      // no-op
     } finally {
       setCancelling(null);
     }
@@ -228,7 +301,18 @@ function EnviadasTab() {
   }
 
   return (
-    <div>
+    <>
+      {confirmCancel && (
+        <ConfirmDialog
+          title="Cancelar solicitud"
+          body="¿Deseas cancelar esta solicitud de verificación pendiente? Esta acción no se puede deshacer."
+          confirmLabel="Cancelar solicitud"
+          confirmColor="#ef4444"
+          onConfirm={() => void doCancel(confirmCancel)}
+          onCancel={() => setConfirmCancel(null)}
+        />
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
         <button onClick={load} style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.82rem' }}>
           ↻ Actualizar
@@ -239,7 +323,7 @@ function EnviadasTab() {
           <SentCard
             key={item.nonce}
             item={item}
-            onCancel={handleCancel}
+            onCancel={(n) => setConfirmCancel(n)}
             onOpenDetail={setDetail}
             cancelling={cancelling}
           />
@@ -249,7 +333,7 @@ function EnviadasTab() {
       {detail && (
         <VerificationDetailDrawer item={detail} onClose={() => setDetail(null)} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -262,7 +346,7 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
   const { text: stText, color: stColor } = statusLabel(item);
   const date = new Date(item.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
   const isCompleted = item.token?.status === 'USED';
-  const isPending = item.status === 'PENDING';
+  const canCancel = item.status === 'PENDING' || item.status === 'IN_PROGRESS';
 
   return (
     <div
@@ -292,9 +376,9 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
           <span style={{ padding: '0.2rem 0.6rem', borderRadius: 20, background: `${stColor}20`, color: stColor, fontSize: '0.72rem', fontWeight: 700 }}>
             {stText}
           </span>
-          {isPending && (
+          {canCancel && (
             <button
-              onClick={(e) => { e.stopPropagation(); void onCancel(item.nonce); }}
+              onClick={(e) => { e.stopPropagation(); onCancel(item.nonce); }}
               disabled={cancelling === item.nonce}
               style={{ padding: '0.15rem 0.55rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.06)', color: '#ef4444', cursor: cancelling === item.nonce ? 'not-allowed' : 'pointer', fontSize: '0.7rem', fontWeight: 600, opacity: cancelling === item.nonce ? 0.6 : 1 }}>
               {cancelling === item.nonce ? 'Cancelando…' : 'Cancelar'}
@@ -331,6 +415,7 @@ function statusLabel(item: ChallengeHistoryItem): { text: string; color: string 
   if (item.status === 'CANCELLED') return { text: 'Cancelado', color: '#9ca3af' };
   if (item.status === 'REJECTED') return { text: 'Rechazado', color: '#f59e0b' };
   if (item.token?.status === 'USED') return { text: 'Completada', color: '#22c55e' };
+  if (item.status === 'IN_PROGRESS') return { text: 'Verificando', color: '#3b82f6' };
   if (item.status === 'PENDING') return { text: 'Pendiente', color: '#6c63ff' };
   return { text: item.status, color: 'var(--color-muted)' };
 }
@@ -339,6 +424,7 @@ function statusLabel(item: ChallengeHistoryItem): { text: string; color: string 
 
 function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryItem; onClose: () => void }) {
   const [closing, setClosing] = useState(false);
+  const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
   const b64Src = (b64: string) => `data:image/jpeg;base64,${b64}`;
 
   function close() {
@@ -346,13 +432,15 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
     setTimeout(onClose, 220);
   }
 
-  // Build a partial UserIdentity-like object from history item for display
   const subject = item.subject;
   const token = item.token;
 
   return (
     <>
-      {/* Overlay */}
+      {lightbox && (
+        <PhotoLightbox src={lightbox.src} label={lightbox.label} onClose={() => setLightbox(null)} />
+      )}
+
       <div
         onClick={close}
         style={{
@@ -360,7 +448,6 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
           zIndex: 300, animation: closing ? 'fadeOut 0.2s forwards' : 'fadeIn 0.2s forwards',
         }}
       />
-      {/* Drawer */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: Math.min(560, window.innerWidth),
         background: 'var(--color-bg)', borderLeft: '1px solid var(--color-border)',
@@ -391,7 +478,7 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{subject.full_name}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginBottom: '0.35rem' }}>
-                {subject.id_type === 'INE' ? 'INE / IFE' : 'Pasaporte'}
+                {idTypeLabel(subject.id_type)}
               </div>
               <span style={{ fontSize: '0.72rem', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
                 ✓ Verificación completada
@@ -400,38 +487,44 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
           </div>
         )}
 
-        {/* Timestamps */}
+        {/* Timestamps + metadata */}
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '0.9rem 1rem', marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>TIEMPOS</div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>DETALLES</div>
           <DrawerRow label="Solicitud creada" value={new Date(item.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'medium' })} />
           {token?.validated_at && (
             <DrawerRow label="Verificado a las" value={new Date(token.validated_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'medium' })} />
           )}
+          {subject?.id_type && (
+            <DrawerRow label="Tipo de ID" value={idTypeLabel(subject.id_type)} />
+          )}
         </div>
 
         {/* Biometric scores */}
-        {token && (
+        {token && token.liveness_match_score != null && (
           <div style={{ marginBottom: '1.25rem' }}>
             <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>PUNTAJES BIOMÉTRICOS</div>
-            {token.liveness_match_score != null && (
-              <ScoreBar label="Match 3D vs 3D (verificación en vivo)" score={token.liveness_match_score} />
-            )}
+            <ScoreBar label="Match 3D vs 3D (verificación en vivo)" score={token.liveness_match_score} />
           </div>
         )}
 
         {/* Photos */}
         <div style={{ marginBottom: '1.25rem' }}>
           <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.75rem' }}>FOTOS</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             {token?.liveness_snapshot ? (
-              <PhotoBox src={b64Src(token.liveness_snapshot)} label="Selfie en verificación" />
+              <ClickablePhoto src={b64Src(token.liveness_snapshot)} label="Selfie en verificación" onOpen={setLightbox} />
             ) : (
               <EmptyPhotoBox label="Selfie en verificación" />
             )}
             {subject?.profile_photo ? (
-              <PhotoBox src={b64Src(subject.profile_photo)} label="Foto de registro" />
+              <ClickablePhoto src={b64Src(subject.profile_photo)} label="Foto de registro" onOpen={setLightbox} />
             ) : (
               <EmptyPhotoBox label="Foto de registro" />
+            )}
+            {subject?.id_front_photo ? (
+              <ClickablePhoto src={b64Src(subject.id_front_photo)} label="Identificación oficial" onOpen={setLightbox} />
+            ) : (
+              <EmptyPhotoBox label="Identificación oficial" />
             )}
           </div>
         </div>
@@ -449,6 +542,27 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
         @keyframes slideOut { from { transform: translateX(0) } to { transform: translateX(100%) } }
       `}</style>
     </>
+  );
+}
+
+function idTypeLabel(idType: string | null): string {
+  if (idType === 'INE') return 'INE / IFE';
+  if (idType === 'PASSPORT') return 'Pasaporte';
+  return idType ?? 'Identificación';
+}
+
+function ClickablePhoto({ src, label, onOpen }: { src: string; label: string; onOpen: (v: { src: string; label: string }) => void }) {
+  return (
+    <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => onOpen({ src, label })}>
+      <PhotoBox src={src} label={label} />
+      <div style={{
+        position: 'absolute', top: 6, right: 6,
+        background: 'rgba(0,0,0,0.55)', borderRadius: 6,
+        padding: '2px 5px', fontSize: '0.65rem', color: '#fff', pointerEvents: 'none',
+      }}>
+        🔍
+      </div>
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { InboxProvider } from './context/InboxContext.tsx';
+import { SentChangesProvider } from './context/SentChangesContext.tsx';
 import './index.css';
 
 const root = document.getElementById('root');
@@ -14,7 +15,9 @@ createRoot(root).render(
     <BrowserRouter>
       <AuthProvider>
         <InboxProvider>
-          <App />
+          <SentChangesProvider>
+            <App />
+          </SentChangesProvider>
         </InboxProvider>
       </AuthProvider>
     </BrowserRouter>
