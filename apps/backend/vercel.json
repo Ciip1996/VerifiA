@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build && npx prisma generate",
-  "installCommand": "npm ci",
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "npx prisma generate && npm run build",
   "outputDirectory": "dist",
   "functions": {
     "dist/index.js": { "maxDuration": 30 }

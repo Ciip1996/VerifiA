@@ -2,6 +2,7 @@
   "name": "@verifia/backend",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc --project tsconfig.json",
@@ -28,6 +29,7 @@
     "jose": "^5.9.6",
     "resend": "6.12.4",
     "uuid": "^10.0.0",
+    "vercel": "54.14.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
