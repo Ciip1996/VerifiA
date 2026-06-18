@@ -87,8 +87,12 @@ class SentChallengesService extends ChangeNotifier {
       final prev = _lastStatus[c.nonce];
       _lastStatus[c.nonce] = c.status;
 
-      // Fire notification only on PENDING → REJECTED or PENDING → CANCELLED
-      if (prev == 'PENDING' && (c.status == 'REJECTED' || c.status == 'CANCELLED')) {
+      if (prev == null) continue; // first time seeing this challenge, no transition yet
+
+      if (c.status == 'USED' && prev != 'USED') {
+        // PENDING or IN_PROGRESS → USED: verification completed
+        _latestChange = SentStatusChange(challenge: c, newStatus: c.status);
+      } else if (prev == 'PENDING' && (c.status == 'REJECTED' || c.status == 'CANCELLED')) {
         _latestChange = SentStatusChange(challenge: c, newStatus: c.status);
       }
     }

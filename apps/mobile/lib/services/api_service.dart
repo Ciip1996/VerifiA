@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'passkey_service.dart';
 
-// Backend URL — set via --dart-define or defaults to local dev
+// Backend URL — set via --dart-define or defaults to production
 const _baseUrl = String.fromEnvironment(
   'VERIFIA_API_URL',
-  defaultValue: 'http://localhost:3001',
+  defaultValue: 'https://verifia-backend.vercel.app',
 );
 
 /// Thrown for all network-level failures (no response received).
@@ -204,6 +204,7 @@ class SentChallenge {
 
 class IncomingChallenge {
   final String nonce;
+  final String status;
   final String verifierId;
   final String createdAt;
   final String expiresAt;
@@ -213,6 +214,7 @@ class IncomingChallenge {
 
   const IncomingChallenge({
     required this.nonce,
+    required this.status,
     required this.verifierId,
     required this.createdAt,
     required this.expiresAt,
@@ -225,6 +227,7 @@ class IncomingChallenge {
     final req = json['requester'] as Map<String, dynamic>?;
     return IncomingChallenge(
       nonce: json['nonce'] as String,
+      status: (json['status'] as String?) ?? 'PENDING',
       verifierId: json['verifier_id'] as String,
       createdAt: json['created_at'] as String,
       expiresAt: json['expires_at'] as String,

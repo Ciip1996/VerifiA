@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/presence_challenge_screen.dart';
 import 'screens/home_screen.dart';
@@ -132,22 +133,58 @@ class _VerifiAAppState extends State<VerifiAApp> {
       title: 'VerifiA',
       navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      theme: _buildTheme(),
+      darkTheme: _buildTheme(),
       themeMode: ThemeMode.dark,
       home: _home,
     );
   }
+}
+
+// ─── Design system ────────────────────────────────────────────────────────────
+
+// Brand tokens
+const _colorPrimary   = Color(0xFF06142A); // dark navy — surfaces
+const _colorSecondary = Color(0xFF00EAF2); // cyan — primary accent / CTAs
+const _colorTertiary  = Color(0xFF147BFF); // blue — secondary accent
+const _colorNeutral   = Color(0xFFF4F8FF); // near-white — body text
+const _colorSurface   = Color(0xFF0D2040); // elevated surface
+const _colorBg        = Color(0xFF020B1E); // page background
+
+ThemeData _buildTheme() {
+  const colorScheme = ColorScheme(
+    brightness:      Brightness.dark,
+    primary:         _colorSecondary,  // cyan — buttons, active states
+    onPrimary:       _colorPrimary,
+    secondary:       _colorTertiary,   // blue — chips, indicators
+    onSecondary:     _colorNeutral,
+    surface:         _colorSurface,
+    onSurface:       _colorNeutral,
+    error:           Color(0xFFEF4444),
+    onError:         _colorNeutral,
+    surfaceContainerHighest: _colorPrimary,
+    surfaceContainer:        _colorPrimary,
+  );
+
+  final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
+
+  final textTheme = baseTextTheme.copyWith(
+    displayLarge:   GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w700),
+    displayMedium:  GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w700),
+    displaySmall:   GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w600),
+    headlineLarge:  GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w600),
+    headlineMedium: GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w600),
+    headlineSmall:  GoogleFonts.hankenGrotesk(color: _colorNeutral, fontWeight: FontWeight.w500),
+    labelSmall:     GoogleFonts.jetBrainsMono(color: _colorNeutral, fontSize: 11),
+    labelMedium:    GoogleFonts.jetBrainsMono(color: _colorNeutral, fontSize: 12),
+  );
+
+  return ThemeData(
+    useMaterial3:            true,
+    colorScheme:             colorScheme,
+    scaffoldBackgroundColor: _colorBg,
+    textTheme:               textTheme,
+    cardColor:               _colorSurface,
+    dividerColor:            const Color(0xFF1E293B),
+  );
 }

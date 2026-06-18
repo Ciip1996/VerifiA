@@ -45,7 +45,7 @@ export function ProfilePage() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
-          <div style={{ width: 32, height: 32, border: '3px solid rgba(108,99,255,0.3)', borderTopColor: '#6c63ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+          <div style={{ width: 32, height: 32, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
           Cargando perfil…
         </div>
       )}
@@ -68,8 +68,8 @@ export function ProfilePage() {
         <>
           {/* Avatar + name card */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(108,99,255,0.12) 0%, rgba(168,85,247,0.08) 100%)',
-            border: '1px solid rgba(108,99,255,0.25)',
+            background: 'linear-gradient(135deg, rgba(0,234,242,0.12) 0%, rgba(59,178,246,0.05) 100%)',
+            border: '1px solid rgba(0,234,242,0.25)',
             borderRadius: 16,
             padding: '1.5rem',
             marginBottom: '1.25rem',
@@ -81,13 +81,13 @@ export function ProfilePage() {
               <img
                 src={`data:image/jpeg;base64,${displayData.profile_photo}`}
                 alt={displayData.full_name ?? ''}
-                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(108,99,255,0.5)', flexShrink: 0 }}
+                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(0,234,242,0.5)', flexShrink: 0 }}
               />
             ) : (
               <div style={{
-                width: 80, height: 80, borderRadius: '50%', background: 'rgba(108,99,255,0.2)',
-                border: '3px solid rgba(108,99,255,0.4)', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#a8a4ff', flexShrink: 0,
+                width: 80, height: 80, borderRadius: '50%', background: 'rgba(0,234,242,0.2)',
+                border: '3px solid rgba(0,234,242,0.4)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 28, fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0,
               }}>
                 {displayData.full_name ? displayData.full_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : '?'}
               </div>
@@ -104,8 +104,8 @@ export function ProfilePage() {
               {displayData.id_type && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                  fontSize: '0.72rem', fontWeight: 600, color: '#a8a4ff',
-                  background: 'rgba(108,99,255,0.15)', border: '1px solid rgba(108,99,255,0.3)',
+                  fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-accent)',
+                  background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.3)',
                   padding: '2px 9px', borderRadius: 10,
                 }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

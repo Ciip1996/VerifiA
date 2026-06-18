@@ -39,7 +39,7 @@ export function PublicProfilePage() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
         <div style={{ textAlign: 'center', color: 'var(--color-muted)' }}>
-          <div style={{ width: 36, height: 36, border: '3px solid rgba(108,99,255,0.3)', borderTopColor: '#6c63ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+          <div style={{ width: 36, height: 36, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
           Cargando perfil…
         </div>
       </div>
@@ -83,7 +83,7 @@ export function PublicProfilePage() {
 
       {/* Hero header */}
       <div style={{
-        background: 'linear-gradient(180deg, rgba(108,99,255,0.18) 0%, transparent 100%)',
+        background: 'linear-gradient(180deg, rgba(0,234,242,0.12) 0%, transparent 100%)',
         borderBottom: '1px solid var(--color-border)',
         padding: '2rem 1.5rem 1.75rem',
         display: 'flex',
@@ -96,14 +96,14 @@ export function PublicProfilePage() {
             <img
               src={`data:image/jpeg;base64,${profile.profile_photo}`}
               alt={profile.full_name ?? ''}
-              style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(108,99,255,0.5)' }}
+              style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(0,234,242,0.5)' }}
             />
           ) : (
             <div style={{
               width: 88, height: 88, borderRadius: '50%',
-              background: 'rgba(108,99,255,0.2)', border: '3px solid rgba(108,99,255,0.4)',
+              background: 'rgba(0,234,242,0.2)', border: '3px solid rgba(0,234,242,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 32, fontWeight: 700, color: '#a8a4ff',
+              fontSize: 32, fontWeight: 700, color: 'var(--color-accent)',
             }}>
               {profile.full_name ? profile.full_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : '?'}
             </div>
@@ -123,8 +123,8 @@ export function PublicProfilePage() {
           {profile.id_type && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-              fontSize: '0.72rem', fontWeight: 600, color: '#a8a4ff',
-              background: 'rgba(108,99,255,0.15)', border: '1px solid rgba(108,99,255,0.3)',
+              fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-accent)',
+              background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.3)',
               padding: '2px 9px', borderRadius: 10,
             }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

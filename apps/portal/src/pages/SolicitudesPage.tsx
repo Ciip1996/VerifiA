@@ -39,11 +39,11 @@ export function SolicitudesPage() {
               padding: '0.55rem 1.2rem',
               border: 'none',
               background: 'transparent',
-              color: tab === t ? '#6c63ff' : 'var(--color-muted)',
+              color: tab === t ? 'var(--color-accent)' : 'var(--color-muted)',
               fontWeight: tab === t ? 700 : 400,
               fontSize: '0.9rem',
               cursor: 'pointer',
-              borderBottom: tab === t ? '2px solid #6c63ff' : '2px solid transparent',
+              borderBottom: tab === t ? '2px solid var(--color-accent)' : '2px solid transparent',
               marginBottom: -1,
               transition: 'color 0.15s',
               textTransform: 'capitalize',
@@ -165,8 +165,8 @@ function RecibidasTab() {
         <div>
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
-            background: 'rgba(108,99,255,0.08)', border: '1px solid rgba(108,99,255,0.25)',
-            borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#a8a4ff',
+            background: 'rgba(0,234,242,0.08)', border: '1px solid rgba(0,234,242,0.25)',
+            borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--color-accent)',
           }}>
             <span style={{ flexShrink: 0 }}>📱</span>
             <span>Para completar la verificación, escanea el QR con la app VerifiA en tu iPhone.</span>
@@ -359,7 +359,7 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
         cursor: isCompleted ? 'pointer' : 'default',
         transition: isCompleted ? 'border-color 0.15s' : undefined,
       }}
-      onMouseEnter={(e) => { if (isCompleted) e.currentTarget.style.borderColor = 'rgba(108,99,255,0.4)'; }}
+      onMouseEnter={(e) => { if (isCompleted) e.currentTarget.style.borderColor = 'rgba(0,234,242,0.4)'; }}
       onMouseLeave={(e) => { if (isCompleted) e.currentTarget.style.borderColor = 'var(--color-border)'; }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
@@ -416,7 +416,7 @@ function statusLabel(item: ChallengeHistoryItem): { text: string; color: string 
   if (item.status === 'REJECTED') return { text: 'Rechazado', color: '#f59e0b' };
   if (item.token?.status === 'USED') return { text: 'Completada', color: '#22c55e' };
   if (item.status === 'IN_PROGRESS') return { text: 'Verificando', color: '#3b82f6' };
-  if (item.status === 'PENDING') return { text: 'Pendiente', color: '#6c63ff' };
+  if (item.status === 'PENDING') return { text: 'Pendiente', color: 'var(--color-accent)' };
   return { text: item.status, color: 'var(--color-muted)' };
 }
 
@@ -599,16 +599,16 @@ function UserAvatar({ src, name, size = 36 }: { src: string | null; name: string
       <img
         src={`data:image/jpeg;base64,${src}`}
         alt={name ?? ''}
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(108,99,255,0.3)' }}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(0,234,242,0.3)' }}
       />
     );
   }
   const initials = name ? name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%', background: 'rgba(108,99,255,0.2)',
-      border: '2px solid rgba(108,99,255,0.3)', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', fontSize: size * 0.35, fontWeight: 700, color: '#a8a4ff', flexShrink: 0,
+      width: size, height: size, borderRadius: '50%', background: 'rgba(0,234,242,0.2)',
+      border: '2px solid rgba(0,234,242,0.3)', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', fontSize: size * 0.35, fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0,
     }}>
       {initials}
     </div>
@@ -618,7 +618,7 @@ function UserAvatar({ src, name, size = 36 }: { src: string | null; name: string
 function LoadingSpinner() {
   return (
     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid rgba(108,99,255,0.3)', borderTopColor: '#6c63ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.75rem' }} />
+      <div style={{ width: 32, height: 32, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.75rem' }} />
       Cargando…
     </div>
   );

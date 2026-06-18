@@ -13,6 +13,7 @@ import 'qr_scanner_screen.dart';
 import 'create_challenge_screen.dart';
 import 'incoming_validations_screen.dart';
 import 'user_search_screen.dart';
+import 'verification_detail_screen.dart';
 
 /// Main scaffold shown after successful onboarding + account setup.
 /// Four tabs: QR Scanner, Create QR, Solicitudes, Buscar.
@@ -132,9 +133,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final change = _sent.consumeLatestChange();
     if (change == null) return;
 
-    // Play haptic/sound feedback and show banner
-    FeedbackService.incoming(); // reuse warning haptic — it signals "attention needed"
-    _showRejectedBanner(change);
+    FeedbackService.incoming();
+    if (change.newStatus == 'USED') {
+      _showVerifiedBanner(change);
+    } else {
+      _showRejectedBanner(change);
+    }
   }
 
   void _showRejectedBanner(SentStatusChange change) {
@@ -181,6 +185,63 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               messenger.hideCurrentMaterialBanner();
               setState(() => _tabIndex = 2); // go to Solicitudes tab
+            },
+            child: const Text('Ver'),
+          ),
+        ],
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted) messenger.hideCurrentMaterialBanner();
+    });
+  }
+
+  void _showVerifiedBanner(SentStatusChange change) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentMaterialBanner();
+
+    final c = change.challenge;
+    final name = c.subjectFullName ?? c.targetEmail ?? 'El destinatario';
+
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: CircleAvatar(
+          radius: 20,
+          backgroundColor: const Color(0xFF1B5E20).withAlpha(30),
+          child: const Icon(
+            Icons.verified_rounded,
+            color: Color(0xFF2E7D32),
+            size: 22,
+          ),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$name ya se verificó',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            if (c.targetEmail != null)
+              Text(c.targetEmail!, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => messenger.hideCurrentMaterialBanner(),
+            child: const Text('Descartar'),
+          ),
+          FilledButton.tonal(
+            onPressed: () {
+              messenger.hideCurrentMaterialBanner();
+              setState(() => _tabIndex = 2);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => VerificationDetailScreen(challenge: c),
+                ),
+              );
             },
             child: const Text('Ver'),
           ),

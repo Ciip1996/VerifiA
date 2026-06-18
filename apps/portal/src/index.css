@@ -1,16 +1,33 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --color-bg: #0f0f13;
-  --color-surface: #1a1a24;
-  --color-border: #2a2a38;
-  --color-accent: #6c63ff;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-text: #f1f1f5;
-  --color-muted: #8888a0;
+  /* Brand tokens */
+  --color-primary:   #06142A;
+  --color-secondary: #00EAF2;
+  --color-tertiary:  #147BFF;
+  --color-neutral:   #F4F8FF;
+
+  /* Surfaces */
+  --color-bg:        #020B1E;
+  --color-surface:   #06142A;
+  --color-surface-2: #0D2040;
+  --color-border:    #0D2040;
+
+  /* Semantic */
+  --color-accent:     #00EAF2;
+  --color-accent-alt: #147BFF;
+  --color-success:    #22c55e;
+  --color-danger:     #ef4444;
+  --color-text:       #F4F8FF;
+  --color-muted:      #8BAAC8;
+
+  /* Typography */
+  --font-headline: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-body:     'Inter', system-ui, sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
+  --font:          var(--font-body);
+
   --radius: 12px;
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
   --sidebar-width: 240px;
 }
 
@@ -20,6 +37,9 @@ body {
   font-family: var(--font);
   min-height: 100dvh;
 }
+
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-headline); }
+code, pre, kbd, .mono   { font-family: var(--font-mono); }
 
 a { color: var(--color-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -78,8 +98,8 @@ a:hover { text-decoration: underline; }
 }
 
 .verifia-nav-item.active {
-  background: rgba(108,99,255,0.15);
-  color: #a8a4ff;
+  background: rgba(0,234,242,0.1);
+  color: var(--color-accent);
 }
 
 /* Mobile bottom nav */
@@ -139,7 +159,7 @@ a:hover { text-decoration: underline; }
   }
 
   .verifia-bottom-nav-item:hover,
-  .verifia-bottom-nav-item.active { color: #a8a4ff; }
+  .verifia-bottom-nav-item.active { color: var(--color-accent); }
 }
 
 /* ── Shared utility ────────────────────────────────────────────────────────── */

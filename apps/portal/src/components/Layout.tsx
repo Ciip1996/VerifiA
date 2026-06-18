@@ -100,7 +100,7 @@ function Avatar({ src, name, size = 32 }: { src: string | null; name: string | n
           borderRadius: '50%',
           objectFit: 'cover',
           flexShrink: 0,
-          border: '2px solid rgba(108,99,255,0.4)',
+          border: '2px solid rgba(0,234,242,0.4)',
         }}
       />
     );
@@ -114,14 +114,14 @@ function Avatar({ src, name, size = 32 }: { src: string | null; name: string | n
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'rgba(108,99,255,0.2)',
-        border: '2px solid rgba(108,99,255,0.3)',
+        background: 'rgba(0,234,242,0.2)',
+        border: '2px solid rgba(0,234,242,0.3)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: size * 0.35,
         fontWeight: 700,
-        color: '#a8a4ff',
+        color: 'var(--color-accent)',
         flexShrink: 0,
       }}
     >
@@ -188,18 +188,18 @@ export function Layout() {
       {latestNew && (
         <div style={{
           position: 'fixed', top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 499,
-          background: 'var(--color-surface)', borderBottom: '1px solid rgba(108,99,255,0.35)',
+          background: 'var(--color-surface)', borderBottom: '1px solid rgba(0,234,242,0.35)',
           padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
           animation: 'slideDown 0.35s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
         }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(108,99,255,0.2)', border: '2px solid rgba(108,99,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.7rem', fontWeight: 700, color: '#a8a4ff' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,234,242,0.2)', border: '2px solid rgba(0,234,242,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)' }}>
             {(latestNew.requester.full_name ?? latestNew.requester.email).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
             <strong>{latestNew.requester.full_name ?? latestNew.requester.email}</strong> te solicita verificar tu identidad
           </span>
           <button onClick={consumeLatestNew} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Descartar</button>
-          <button onClick={() => { navigate('/solicitudes'); consumeLatestNew(); }} style={{ background: 'rgba(108,99,255,0.15)', border: '1px solid rgba(108,99,255,0.3)', color: '#a8a4ff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestNew(); }} style={{ background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.3)', color: 'var(--color-accent)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
         </div>
       )}
 
@@ -234,7 +234,7 @@ export function Layout() {
               width: 30,
               height: 30,
               borderRadius: 8,
-              background: 'linear-gradient(135deg, #6c63ff, #a855f7)',
+              background: 'linear-gradient(135deg, #00EAF2, #147BFF)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -244,7 +244,7 @@ export function Layout() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', letterSpacing: '-0.3px' }}>
-                Verifi<span style={{ color: '#a8a4ff' }}>A</span>
+                Verifi<span style={{ color: 'var(--color-accent)' }}>A</span>
               </div>
               <div style={{ fontSize: '0.62rem', color: 'var(--color-muted)', letterSpacing: 0.3 }}>
                 PORTAL DE IDENTIDAD
@@ -304,7 +304,7 @@ export function Layout() {
       {/* ── Mobile topbar ────────────────────────────────────────────────── */}
       <div className="verifia-topbar">
         <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
-          Verifi<span style={{ color: '#a8a4ff' }}>A</span>
+          Verifi<span style={{ color: 'var(--color-accent)' }}>A</span>
         </div>
         <Avatar src={account?.profile_photo ?? null} name={account?.full_name ?? null} size={30} />
       </div>

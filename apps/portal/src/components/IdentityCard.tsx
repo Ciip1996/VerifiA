@@ -108,8 +108,8 @@ export function IdentityCard({ identity }: { identity?: UserIdentity | null }) {
   return (
     <div
       style={{
-        background: 'rgba(108,99,255,0.06)',
-        border: '1px solid rgba(108,99,255,0.25)',
+        background: 'rgba(0,234,242,0.06)',
+        border: '1px solid rgba(0,234,242,0.25)',
         borderRadius: 14,
         padding: '1.1rem 1.25rem',
         marginBottom: '1.25rem',
@@ -120,7 +120,7 @@ export function IdentityCard({ identity }: { identity?: UserIdentity | null }) {
       <div
         style={{
           fontSize: '0.68rem',
-          color: '#a8a4ff',
+          color: 'var(--color-accent)',
           letterSpacing: 1,
           fontWeight: 700,
           marginBottom: '0.85rem',
@@ -147,7 +147,7 @@ export function IdentityCard({ identity }: { identity?: UserIdentity | null }) {
               borderRadius: 10,
               objectFit: 'cover',
               flexShrink: 0,
-              border: '2px solid rgba(108,99,255,0.4)',
+              border: '2px solid rgba(0,234,242,0.4)',
             }}
           />
         )}

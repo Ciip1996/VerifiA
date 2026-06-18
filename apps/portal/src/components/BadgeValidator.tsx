@@ -107,13 +107,13 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.4rem',
-          background: 'rgba(108,99,255,0.1)',
-          border: '1px solid rgba(108,99,255,0.3)',
+          background: 'rgba(0,234,242,0.1)',
+          border: '1px solid rgba(0,234,242,0.3)',
           borderRadius: 20,
           padding: '0.3rem 0.8rem',
           marginBottom: '1.25rem',
           fontSize: '0.8rem',
-          color: '#a8a4ff',
+          color: 'var(--color-accent)',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -237,10 +237,10 @@ export function BadgeValidator({ challenge, onValidated, onExpiredOrInvalid }: P
             onClick={handleCopyLink}
             style={{
               padding: '0.5rem 1rem',
-              background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(108,99,255,0.15)',
-              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(108,99,255,0.4)'}`,
+              background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(0,234,242,0.15)',
+              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(0,234,242,0.4)'}`,
               borderRadius: 8,
-              color: copied ? '#22c55e' : '#a8a4ff',
+              color: copied ? '#22c55e' : 'var(--color-accent)',
               cursor: 'pointer',
               fontSize: '0.8rem',
               fontWeight: 600,

@@ -73,12 +73,12 @@ export function SearchPage() {
             outline: 'none',
             transition: 'border-color 0.15s',
           }}
-          onFocus={(e) => (e.target.style.borderColor = 'rgba(108,99,255,0.6)')}
+          onFocus={(e) => (e.target.style.borderColor = 'rgba(0,234,242,0.6)')}
           onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
         />
         {loading && (
           <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }}>
-            <div style={{ width: 18, height: 18, border: '2px solid rgba(108,99,255,0.3)', borderTopColor: '#6c63ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ width: 18, height: 18, border: '2px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           </div>
         )}
       </div>
@@ -137,7 +137,7 @@ function UserCard({ user, onClick }: { user: AccountSearchResult; onClick: () =>
         gap: '0.9rem',
         padding: '0.85rem 1rem',
         background: hovered ? 'rgba(255,255,255,0.04)' : 'var(--color-surface)',
-        border: `1px solid ${hovered ? 'rgba(108,99,255,0.4)' : 'var(--color-border)'}`,
+        border: `1px solid ${hovered ? 'rgba(0,234,242,0.4)' : 'var(--color-border)'}`,
         borderRadius: 12,
         cursor: 'pointer',
         transition: 'border-color 0.15s, background 0.15s',
@@ -151,7 +151,7 @@ function UserCard({ user, onClick }: { user: AccountSearchResult; onClick: () =>
             {user.full_name ?? user.email}
           </span>
           {user.is_self && (
-            <span style={{ fontSize: '0.68rem', color: '#a8a4ff', background: 'rgba(108,99,255,0.15)', padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
+            <span style={{ fontSize: '0.68rem', color: 'var(--color-accent)', background: 'rgba(0,234,242,0.15)', padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
               Tú
             </span>
           )}
@@ -187,16 +187,16 @@ function UserAvatar({ src, name, size = 36 }: { src: string | null; name: string
       <img
         src={`data:image/jpeg;base64,${src}`}
         alt={name ?? ''}
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(108,99,255,0.3)' }}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(0,234,242,0.3)' }}
       />
     );
   }
   const initials = name ? name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%', background: 'rgba(108,99,255,0.2)',
-      border: '2px solid rgba(108,99,255,0.3)', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', fontSize: size * 0.35, fontWeight: 700, color: '#a8a4ff', flexShrink: 0,
+      width: size, height: size, borderRadius: '50%', background: 'rgba(0,234,242,0.2)',
+      border: '2px solid rgba(0,234,242,0.3)', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', fontSize: size * 0.35, fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0,
     }}>
       {initials}
     </div>

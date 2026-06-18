@@ -158,10 +158,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: apps/backend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -172,13 +168,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
       - name: Run Prisma migrations against production DB
         run: npx prisma migrate deploy
+        working-directory: apps/backend
         env:
           DATABASE_URL: ${{ secrets.DIRECT_URL_PROD }}
 
+      # Deploy from repo root so Vercel receives the full monorepo tree.
+      # The project's Root Directory (apps/backend) is configured in Vercel's
+      # dashboard; the vercel.json installCommand does "cd ../.. && npm ci"
+      # which resolves to the repo root inside the build container.
       - name: Deploy to Vercel
         run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
@@ -192,10 +192,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: apps/portal
-
     steps:
       - uses: actions/checkout@v4
 
@@ -206,8 +202,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
+      # Deploy from repo root so Vercel receives the full monorepo tree.
+      # The project's Root Directory (apps/portal) is configured in Vercel's
+      # dashboard; the vercel.json installCommand does "cd ../.. && npm ci".
       - name: Deploy to Vercel
         run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:

@@ -134,7 +134,7 @@ export function VerifierPage() {
 
       {session.phase === 'generating' && (
         <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-muted)' }}>
-          <div style={{ width: 32, height: 32, border: '3px solid rgba(108,99,255,0.3)', borderTopColor: '#6c63ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+          <div style={{ width: 32, height: 32, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
           Generando QR…
         </div>
       )}
@@ -231,8 +231,8 @@ function IdleView({
             style={{
               padding: '1rem',
               borderRadius: 12,
-              border: `2px solid ${mode === id ? '#6c63ff' : 'var(--color-border)'}`,
-              background: mode === id ? 'rgba(108,99,255,0.1)' : 'var(--color-surface)',
+              border: `2px solid ${mode === id ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              background: mode === id ? 'rgba(0,234,242,0.1)' : 'var(--color-surface)',
               cursor: 'pointer',
               textAlign: 'left',
               transition: 'border-color 0.15s, background 0.15s',
@@ -325,7 +325,7 @@ function IdleView({
                     <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {u.full_name ?? u.email}
                       {u.is_self && (
-                        <span style={{ marginLeft: '0.4rem', fontSize: '0.68rem', color: '#a8a4ff', background: 'rgba(108,99,255,0.15)', padding: '1px 6px', borderRadius: 10 }}>
+                        <span style={{ marginLeft: '0.4rem', fontSize: '0.68rem', color: 'var(--color-accent)', background: 'rgba(0,234,242,0.15)', padding: '1px 6px', borderRadius: 10 }}>
                           Tú
                         </span>
                       )}
@@ -367,7 +367,7 @@ function IdleView({
         style={{
           width: '100%',
           padding: '0.875rem',
-          background: canGenerate ? 'var(--color-accent)' : 'rgba(108,99,255,0.3)',
+          background: canGenerate ? 'var(--color-accent)' : 'rgba(0,234,242,0.3)',
           color: '#fff',
           border: 'none',
           borderRadius: 12,
@@ -537,9 +537,9 @@ function PendingView({
       {targetEmail && (
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-          background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.3)',
+          background: 'rgba(0,234,242,0.1)', border: '1px solid rgba(0,234,242,0.3)',
           borderRadius: 20, padding: '0.3rem 0.9rem', marginBottom: '1.25rem',
-          fontSize: '0.8rem', color: '#a8a4ff',
+          fontSize: '0.8rem', color: 'var(--color-accent)',
         }}>
           🎯 Para: <strong style={{ color: '#c4c1ff' }}>{targetEmail}</strong>
         </div>
@@ -597,15 +597,15 @@ function PendingView({
       {/* Actions */}
       {pollStatus === 'waiting' && (
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-          <button onClick={handleCopy} style={actionBtnStyle(copied ? '#22c55e' : 'rgba(108,99,255,0.15)', copied ? 'rgba(34,197,94,0.4)' : 'rgba(108,99,255,0.4)', copied ? '#22c55e' : '#a8a4ff')}>
+          <button onClick={handleCopy} style={actionBtnStyle(copied ? '#22c55e' : 'rgba(0,234,242,0.15)', copied ? 'rgba(34,197,94,0.4)' : 'rgba(0,234,242,0.4)', copied ? '#22c55e' : 'var(--color-accent)')}>
             {copied ? '✓ Copiado' : '📋 Copiar link'}
           </button>
           {typeof navigator.share === 'function' && (
-            <button onClick={handleShare} style={actionBtnStyle('rgba(108,99,255,0.15)', 'rgba(108,99,255,0.4)', '#a8a4ff')}>
+            <button onClick={handleShare} style={actionBtnStyle('rgba(0,234,242,0.15)', 'rgba(0,234,242,0.4)', 'var(--color-accent)')}>
               ↑ Compartir
             </button>
           )}
-          <button onClick={handleDownloadQR} style={actionBtnStyle('rgba(108,99,255,0.15)', 'rgba(108,99,255,0.4)', '#a8a4ff')}>
+          <button onClick={handleDownloadQR} style={actionBtnStyle('rgba(0,234,242,0.15)', 'rgba(0,234,242,0.4)', 'var(--color-accent)')}>
             ⬇ Descargar QR
           </button>
         </div>
@@ -722,7 +722,7 @@ function UserAvatarSmall({ src, name }: { src: string | null; name: string | nul
   if (src) return <img src={`data:image/jpeg;base64,${src}`} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
   const initials = name ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   return (
-    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(108,99,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#a8a4ff', flexShrink: 0 }}>
+    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,234,242,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0 }}>
       {initials}
     </div>
   );

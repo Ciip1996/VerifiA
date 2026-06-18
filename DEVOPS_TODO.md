@@ -1,10 +1,28 @@
 # DevOps TODO — TestFlight + Vercel CI/CD
 
-All code changes are done. The steps below are manual external tasks you must complete before CI/CD is fully operational.
+## Status legend
+- ✅ **Done in code** — already implemented, no action needed
+- 🔧 **Your action required** — external service / credential you must create manually
 
 ---
 
-## Step 1 — Neon Database (free tier)
+## ✅ Code is deployment-ready
+
+All of the following have been implemented and verified (`typecheck` + `build` both pass clean):
+
+| What | File | Notes |
+|------|------|-------|
+| Express app exports `default app` for Vercel serverless | `apps/backend/src/index.ts` | `app.listen()` skipped when `process.env.VERCEL` is set |
+| Backend `vercel.json` — monorepo-safe install + correct build order | `apps/backend/vercel.json` | `installCommand: "cd ../.. && npm ci"` · `buildCommand: "npx prisma generate && npm run build"` |
+| Portal `vercel.json` — monorepo-safe install | `apps/portal/vercel.json` | `installCommand: "cd ../.. && npm ci"` · SPA rewrites included |
+| CI deploy jobs run from repo root | `.github/workflows/ci.yml` | `vercel deploy` uploads the full monorepo tree so `cd ../..` resolves inside the build container |
+| Prisma schema uses pooled + direct URL | `apps/backend/prisma/schema.prisma` | `DATABASE_URL` (pgbouncer) + `DIRECT_URL` (migrations) |
+| CORS, `API_BASE_URL`, `APPLE_BUNDLE_ID` all read correct env var names | `apps/backend/src/index.ts`, `src/services/app-attest.ts` | `.env.example` updated to match |
+| All 13 CI GitHub secrets consumed correctly | `.github/workflows/ci.yml` | See Step 9 table |
+
+---
+
+## 🔧 Step 1 — Neon Database (free tier)
 
 1. Go to [neon.tech](https://neon.tech) → Sign up → **New Project** → name it `verifia-prod`
 2. Open **Connection Details** in the Neon dashboard:
@@ -12,7 +30,7 @@ All code changes are done. The steps below are manual external tasks you must co
      - Append `&pgbouncer=true&connection_limit=1` to it
    - Copy the **Direct connection** string → this is `DIRECT_URL`
    - Both strings look like: `postgresql://user:pass@ep-xxx.neon.tech/verifia_prod?sslmode=require`
-3. Run the first migration locally:
+3. Run the first migration locally to create the schema:
    ```bash
    cd apps/backend
    DATABASE_URL="<direct-neon-url>" npx prisma migrate deploy
@@ -20,12 +38,12 @@ All code changes are done. The steps below are manual external tasks you must co
 
 ---
 
-## Step 2 — Vercel: Backend project
+## 🔧 Step 2 — Vercel: Backend project
 
 1. Go to [vercel.com](https://vercel.com) → **New Project** → Import `VerifiA` repo
 2. Set **Root Directory**: `apps/backend`
 3. Set **Framework Preset**: Other
-4. Add all environment variables (use production values):
+4. Add all environment variables (production values):
 
    | Variable | Value |
    |---|---|
@@ -36,7 +54,7 @@ All code changes are done. The steps below are manual external tasks you must co
    | `NODE_ENV` | `production` |
    | `VERIFIA_SKIP_ATTEST` | `false` |
    | `CORS_ORIGIN` | Your portal Vercel URL (e.g. `https://verifia-portal.vercel.app`) |
-   | `API_BASE_URL` | Your **backend** Vercel URL (e.g. `https://verifia-api.vercel.app`) — used to build every QR redirect link; QR codes will be broken without this |
+   | `API_BASE_URL` | Your **backend** Vercel URL (e.g. `https://verifia-api.vercel.app`) — QR redirect links are broken without this |
    | `RESEND_API_KEY` | Your Resend API key (get at resend.com) — required for email invitations |
    | `APPLE_TEAM_ID` | Your Apple Developer Team ID |
    | `APPLE_BUNDLE_ID` | `com.verifia.verifiaMobile` |
@@ -44,14 +62,14 @@ All code changes are done. The steps below are manual external tasks you must co
    | `CHALLENGE_TTL_SECONDS` | `600` (10 min) |
    | Any FaceTec / other keys from `.env.example` | Production values |
 
-5. Click **Deploy** once to confirm it works
+5. Click **Deploy** once to confirm it builds (the `installCommand` in `vercel.json` handles the monorepo lockfile automatically)
 6. Go to **Settings → General** and copy:
    - **Project ID** → `VERCEL_PROJECT_ID_BACKEND`
    - **Team/Org ID** → `VERCEL_ORG_ID`
 
 ---
 
-## Step 3 — Vercel: Portal project
+## 🔧 Step 3 — Vercel: Portal project
 
 1. In Vercel → **New Project** → Import same `VerifiA` repo (second project)
 2. Set **Root Directory**: `apps/portal`
@@ -60,14 +78,14 @@ All code changes are done. The steps below are manual external tasks you must co
    | Variable | Value |
    |---|---|
    | `VITE_API_URL` | Your backend Vercel URL (e.g. `https://verifia-api.vercel.app`) |
-   | `VITE_VERIFIER_API_KEY` | Your API key |
+   | `VITE_VERIFIER_API_KEY` | Any string — used as the `audience` in issued JWTs; must be the same value on every deployment |
 
-4. Click **Deploy** once to confirm it works
+4. Click **Deploy** once to confirm it builds
 5. Copy the **Project ID** → `VERCEL_PROJECT_ID_PORTAL`
 
 ---
 
-## Step 4 — Vercel token
+## 🔧 Step 4 — Vercel token
 
 1. Go to [vercel.com/account/tokens](https://vercel.com/account/tokens)
 2. Click **Create** → name it `github-ci` → no expiry (or set one)
@@ -75,25 +93,25 @@ All code changes are done. The steps below are manual external tasks you must co
 
 ---
 
-## Step 5 — Apple Developer Program
+## 🔧 Step 5 — Apple Developer Program
 
 - Must be enrolled at [developer.apple.com/programs](https://developer.apple.com/programs/) ($99/yr)
 - If not enrolled yet, enrollment takes up to 48 hours to process
 
 ---
 
-## Step 6 — App Store Connect: Create the app
+## 🔧 Step 6 — App Store Connect: Create the app
 
 1. Go to [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
 2. **Apps → "+" → New App**
    - Platform: iOS
    - Bundle ID: `com.verifia.verifiaMobile`
    - SKU: `verifia-mobile`
-3. After creation, go to **App Information** and note the **Apple ID (numeric)** — this is for reference only; the CI doesn't need it as a secret (Fastlane discovers it automatically via the App Store Connect API key)
+3. After creation, go to **App Information** and note the **Apple ID (numeric)** — for reference only; the CI discovers it automatically via the App Store Connect API key
 
 ---
 
-## Step 7 — App Store Connect API Key
+## 🔧 Step 7 — App Store Connect API Key
 
 1. In App Store Connect → **Users and Access → Integrations → App Store Connect API**
 2. Click **"+" → Name: `CI`**, Role: **App Manager**
@@ -108,7 +126,7 @@ All code changes are done. The steps below are manual external tasks you must co
 
 ---
 
-## Step 8 — Distribution Certificate + Provisioning Profile
+## 🔧 Step 8 — Distribution Certificate + Provisioning Profile
 
 ### Distribution Certificate
 1. In Xcode → **Settings → Accounts** → select your Apple ID → **Manage Certificates**
@@ -135,7 +153,7 @@ All code changes are done. The steps below are manual external tasks you must co
 
 ---
 
-## Step 9 — Add all GitHub Secrets
+## 🔧 Step 9 — Add all GitHub Secrets
 
 Go to: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
 
@@ -159,7 +177,7 @@ Add each of the following:
 
 ---
 
-## Step 10 — Verify CI/CD end-to-end
+## 🔧 Step 10 — Verify CI/CD end-to-end
 
 1. Push a commit to `main`
 2. Go to **GitHub → Actions** and watch:

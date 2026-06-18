@@ -350,7 +350,7 @@ challengesRouter.patch('/:nonce/cancel', requireAccount, async (req, res, next) 
     if (!challenge) {
       throw new AppError(404, 'Challenge not found', 'CHALLENGE_NOT_FOUND');
     }
-    if (challenge.status !== 'PENDING') {
+    if (challenge.status !== 'PENDING' && challenge.status !== 'IN_PROGRESS') {
       throw new AppError(409, 'Challenge is no longer pending', 'CHALLENGE_NOT_PENDING');
     }
     if (challenge.account_id !== req.account!.id) {
@@ -379,7 +379,7 @@ challengesRouter.get('/incoming', requireAccount, async (req, res, next) => {
     const challenges = await prisma.challenge.findMany({
       where: {
         target_email: req.account!.email,
-        status: 'PENDING',
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
         exp_time: { gt: now },
       },
       orderBy: { created_at: 'desc' },
@@ -412,6 +412,7 @@ challengesRouter.get('/incoming', requireAccount, async (req, res, next) => {
       const profile = requester ? profileByDevice[requester.device_id] : null;
       return {
         nonce: c.nonce,
+        status: c.status,
         verifier_id: c.verifier_id,
         created_at: c.created_at.toISOString(),
         expires_at: c.exp_time.toISOString(),

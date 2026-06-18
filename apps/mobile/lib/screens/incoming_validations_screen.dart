@@ -154,6 +154,7 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
           final c = items[i];
           return _ReceivedCard(
             challenge: c,
+            isInProgress: c.status == 'IN_PROGRESS',
             onVerify: () => _open(c),
             onReject: () => _reject(c),
           );
@@ -171,10 +172,12 @@ class _ReceivedCard extends StatefulWidget {
     required this.challenge,
     required this.onVerify,
     required this.onReject,
+    this.isInProgress = false,
   });
   final IncomingChallenge challenge;
   final VoidCallback onVerify;
   final VoidCallback onReject;
+  final bool isInProgress;
 
   @override
   State<_ReceivedCard> createState() => _ReceivedCardState();
@@ -344,7 +347,10 @@ class _ReceivedCardState extends State<_ReceivedCard> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         minimumSize: const Size(90, 36),
                       ),
-                      child: const Text('Verificar', style: TextStyle(fontSize: 13)),
+                      child: Text(
+                        widget.isInProgress ? 'Retomar' : 'Verificar',
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     OutlinedButton(
