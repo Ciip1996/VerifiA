@@ -4,9 +4,10 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/onboarding_screen.dart';
-import 'screens/presence_challenge_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/permissions_wizard_screen.dart';
+import 'screens/presence_challenge_screen.dart';
 import 'services/app_attest_service.dart' show AppAttestService;
 import 'services/api_service.dart';
 
@@ -67,7 +68,7 @@ class VerifiAApp extends StatefulWidget {
 
 class _VerifiAAppState extends State<VerifiAApp> {
   StreamSubscription<Uri>? _linkSub;
-  Widget _home = const HomeScreen();
+  Widget _home = const _SplashPlaceholder();
 
   static const bool _skipAttest =
       bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
@@ -92,12 +93,25 @@ class _VerifiAAppState extends State<VerifiAApp> {
       }
     }
 
+    // Allow resetting the wizard for testing via dart-define
+    const resetWizard = bool.fromEnvironment('VERIFIA_RESET_WIZARD', defaultValue: false);
+    if (resetWizard) {
+      await storage.delete(key: 'permissions_wizard_done');
+    }
+
+    // Show permissions wizard on first launch before anything else
+    final wizardDone = await storage.read(key: 'permissions_wizard_done');
+    if (wizardDone != 'true') {
+      if (!mounted) return;
+      setState(() => _home = const PermissionsWizardScreen());
+      return;
+    }
+
     final registered = await storage.read(key: 'profile_registered');
     if (!mounted) return;
-    if (registered != 'true') {
-      setState(() => _home = const OnboardingScreen());
-    }
-    // If registered, HomeScreen handles showing login if session is missing
+    setState(() {
+      _home = registered == 'true' ? const HomeScreen() : const OnboardingScreen();
+    });
   }
 
   Future<void> _initDeepLinks() async {
@@ -187,4 +201,21 @@ ThemeData _buildTheme() {
     cardColor:               _colorSurface,
     dividerColor:            const Color(0xFF1E293B),
   );
+}
+
+// Blank screen shown while _resolveHome() is running.
+// Prevents HomeScreen (and its camera-using widgets) from rendering
+// before routing is determined, which would trigger premature permission dialogs.
+class _SplashPlaceholder extends StatelessWidget {
+  const _SplashPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF020B1E),
+      body: Center(
+        child: CircularProgressIndicator(color: Color(0xFF00EAF2), strokeWidth: 2),
+      ),
+    );
+  }
 }
