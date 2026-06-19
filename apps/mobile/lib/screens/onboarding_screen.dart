@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/facetec_service.dart';
 import 'liveness_screen.dart';
@@ -37,6 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   _Step _step = _Step.form;
   String? _errorMsg;
   bool _ocrRunning = false;
+  bool _isCancelled = false;
 
   FaceTecIDMatchResult? _scanResult;
 
@@ -64,13 +66,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() => _ocrRunning = false);
       }
     } on PlatformException catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _errorMsg = e.message ?? 'Escaneo cancelado';
+        _errorMsg = e.message ?? l10n.onboardingScanCancelled;
         _step = _Step.form;
       });
     } catch (e) {
       setState(() {
-        _errorMsg = friendlyError(e);
+        _errorMsg = friendlyError(e, context);
         _step = _Step.form;
       });
     }
@@ -150,14 +154,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     } on PlatformException catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _errorMsg = e.message ?? 'Captura cancelada';
+        _errorMsg = e.message ?? l10n.onboardingCaptureCancelled;
         _step = _Step.form;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMsg = friendlyError(e);
+        _errorMsg = friendlyError(e, context);
         _step = _Step.form;
       });
     }
@@ -206,6 +211,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await _storage.write(key: 'profile_registered', value: 'true');
 
       if (!mounted) return;
+      if (_step != _Step.confirming) return; // user navigated away
+      if (_isCancelled) return;
       setState(() => _step = _Step.done);
 
       await Future.delayed(const Duration(milliseconds: 600));
@@ -217,7 +224,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     } catch (e) {
       setState(() {
-        _errorMsg = friendlyError(e);
+        _errorMsg = friendlyError(e, context);
         _step = _Step.preview;
       });
     }
@@ -305,20 +312,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: switch (_step) {
-            _Step.form      => _buildForm(cs),
-            _Step.scanning  => _buildScanning(),
-            _Step.preview   => _buildPreview(cs),
-            _Step.confirming => _buildConfirming(),
-            _Step.done      => _buildDone(cs),
-          },
+    return PopScope(
+      canPop: _step != _Step.confirming,
+      child: Scaffold(
+        backgroundColor: cs.surface,
+        body: SafeArea(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: switch (_step) {
+              _Step.form      => _buildForm(cs, l10n),
+              _Step.scanning  => _buildScanning(l10n),
+              _Step.preview   => _buildPreview(cs, l10n),
+              _Step.confirming => _buildConfirming(l10n),
+              _Step.done      => _buildDone(cs, l10n),
+            },
+          ),
         ),
       ),
     );
@@ -326,7 +337,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── Form step ─────────────────────────────────────────────────────────────
 
-  Widget _buildForm(ColorScheme cs) {
+  Widget _buildForm(ColorScheme cs, AppLocalizations l10n) {
     return SingleChildScrollView(
       key: const ValueKey('form'),
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
@@ -338,15 +349,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 24),
             Image.asset('assets/images/logo_dark.png', height: 36, fit: BoxFit.contain),
             const SizedBox(height: 16),
-            Text('Registro de identidad',
+            Text(l10n.onboardingTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: cs.onSurface,
                     )),
             const SizedBox(height: 6),
             Text(
-              'Para emitir badges de presencia necesitas registrar tu identidad una sola vez. '
-              'FaceTec escaneará tu cara y tu identificación oficial.',
+              l10n.onboardingSubtitle,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -355,7 +365,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 32),
 
             // ID type selector
-            Text('Tipo de identificación',
+            Text(l10n.onboardingIdTypeLabel,
                 style: Theme.of(context)
                     .textTheme
                     .labelLarge
@@ -363,9 +373,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                _idTypeChip('INE', Icons.credit_card_rounded, cs),
+                _idTypeChip('INE', Icons.credit_card_rounded, cs, l10n),
                 const SizedBox(width: 12),
-                _idTypeChip('PASSPORT', Icons.book_rounded, cs),
+                _idTypeChip('PASSPORT', Icons.book_rounded, cs, l10n),
               ],
             ),
             const SizedBox(height: 32),
@@ -395,7 +405,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed:
                     Platform.isIOS ? _startIDMatch : _startAndroidIDCapture,
                 icon: const Icon(Icons.camera_alt_rounded),
-                label: const Text('Escanear ID con FaceTec'),
+                label: Text(l10n.onboardingScanButton),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -410,7 +420,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 ),
                 child: Text(
-                  '¿Ya tienes cuenta? Inicia sesión',
+                  l10n.onboardingLoginLink,
                   style: TextStyle(
                       color: Theme.of(context).colorScheme.primary),
                 ),
@@ -422,7 +432,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _idTypeChip(String type, IconData icon, ColorScheme cs) {
+  Widget _idTypeChip(String type, IconData icon, ColorScheme cs, AppLocalizations l10n) {
     final selected = _idType == type;
     return Expanded(
       child: GestureDetector(
@@ -443,7 +453,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 color: selected ? cs.onPrimary : cs.onSurfaceVariant, size: 28),
             const SizedBox(height: 4),
             Text(
-              type == 'INE' ? 'INE / IFE' : 'Pasaporte',
+              type == 'INE' ? l10n.idTypeINE : l10n.idTypePassport,
               style: TextStyle(
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 color: selected ? cs.onPrimary : cs.onSurfaceVariant,
@@ -458,29 +468,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── Scanning step ─────────────────────────────────────────────────────────
 
-  Widget _buildScanning() {
-    return const Center(
-      key: ValueKey('scanning'),
+  Widget _buildScanning(AppLocalizations l10n) {
+    return Center(
+      key: const ValueKey('scanning'),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 20),
-        Text('Iniciando FaceTec...', style: TextStyle(fontSize: 16)),
-        SizedBox(height: 8),
-        Text('Sigue las instrucciones en pantalla',
-            style: TextStyle(color: Colors.grey)),
+        const CircularProgressIndicator(),
+        const SizedBox(height: 20),
+        Text(l10n.onboardingFacetecStarting, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        Text(l10n.onboardingFacetecInstructions,
+            style: const TextStyle(color: Colors.grey)),
       ]),
     );
   }
 
   // ── Preview step ──────────────────────────────────────────────────────────
 
-  Widget _buildPreview(ColorScheme cs) {
+  Widget _buildPreview(ColorScheme cs, AppLocalizations l10n) {
     final scan = _scanResult!;
     return SingleChildScrollView(
       key: const ValueKey('preview'),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Confirma tu información',
+        Text(l10n.onboardingPreviewTitle,
             style: Theme.of(context)
                 .textTheme
                 .titleLarge
@@ -515,7 +525,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Nombre completo',
+                Text(l10n.onboardingNameLabel,
                     style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 4),
                 if (_ocrRunning)
@@ -525,11 +535,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
                     ),
                     const SizedBox(width: 8),
-                    Text('Leyendo ID…', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                    Text(l10n.onboardingOcrReading, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                   ])
                 else
                   Text(
-                    _nameCtrl.text.isNotEmpty ? _nameCtrl.text : '(no detectado)',
+                    _nameCtrl.text.isNotEmpty ? _nameCtrl.text : l10n.onboardingNotDetected,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
@@ -550,24 +560,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 6, left: 4),
             child: Text(
-              'No se detectó el nombre en la foto. Continúa y corrígelo en tu perfil.',
+              l10n.onboardingNameNotDetected,
               style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ),
         const SizedBox(height: 12),
-        _infoRow('Tipo de ID', _idType == 'INE' ? 'INE / IFE' : 'Pasaporte'),
+        _infoRow(l10n.idTypeLabelShort, _idType == 'INE' ? l10n.idTypeINE : l10n.idTypePassport, cs),
         if (scan.curp?.isNotEmpty == true)
-          _infoRow('CURP', scan.curp!),
+          _infoRow(l10n.curpLabel, scan.curp!, cs),
         if (scan.dateOfBirth?.isNotEmpty == true)
-          _infoRow('Fecha de nac.', scan.dateOfBirth!),
+          _infoRow(l10n.onboardingInfoBirthDate, scan.dateOfBirth!, cs),
         if (scan.matchLevel > 0)
-          _infoRow('Match FaceTec', '${scan.matchLevel}/100'),
+          _infoRow(l10n.onboardingInfoFacetecMatch, '${scan.matchLevel}/100', cs),
 
         const SizedBox(height: 8),
 
         // ID photos
         if (scan.idFrontPhoto.isNotEmpty) ...[
-          Text('Frente del ID',
+          Text(l10n.onboardingIdFrontLabel,
               style: Theme.of(context)
                   .textTheme
                   .labelMedium
@@ -586,7 +596,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ],
 
         if (scan.idBackPhoto?.isNotEmpty == true) ...[
-          Text('Reverso del ID',
+          Text(l10n.onboardingIdBackLabel,
               style: Theme.of(context)
                   .textTheme
                   .labelMedium
@@ -621,18 +631,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Row(children: [
           Expanded(
             child: OutlinedButton(
-              onPressed: () => setState(() {
-                _step = _Step.form;
-                _scanResult = null;
-              }),
-              child: const Text('Repetir'),
+              onPressed: () {
+                _isCancelled = true;
+                setState(() {
+                  _step = _Step.form;
+                  _scanResult = null;
+                });
+              },
+              child: Text(l10n.onboardingRepeatButton),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
               onPressed: _ocrRunning ? null : _confirmAndRegister,
-              child: const Text('Registrarme'),
+              child: Text(l10n.onboardingRegisterButton),
             ),
           ),
         ]),
@@ -640,7 +653,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(String label, String value, ColorScheme cs) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -648,7 +661,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           width: 120,
           child: Text(label,
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: cs.onSurfaceVariant,
                   fontSize: 13)),
         ),
         Expanded(
@@ -661,29 +674,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── Confirming step ───────────────────────────────────────────────────────
 
-  Widget _buildConfirming() {
-    return const Center(
-      key: ValueKey('confirming'),
+  Widget _buildConfirming(AppLocalizations l10n) {
+    return Center(
+      key: const ValueKey('confirming'),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 20),
-        Text('Registrando perfil...'),
+        const CircularProgressIndicator(),
+        const SizedBox(height: 20),
+        Text(l10n.onboardingConfirming),
       ]),
     );
   }
 
   // ── Done step ─────────────────────────────────────────────────────────────
 
-  Widget _buildDone(ColorScheme cs) {
+  Widget _buildDone(ColorScheme cs, AppLocalizations l10n) {
     return Center(
       key: const ValueKey('done'),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.check_circle_rounded, color: cs.primary, size: 80),
         const SizedBox(height: 16),
-        const Text('¡Registro exitoso!',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(l10n.onboardingSuccess,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text('Tu identidad fue verificada.',
+        Text(l10n.onboardingSuccessSubtitle,
             style: TextStyle(color: cs.onSurfaceVariant)),
       ]),
     );

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 
 /// Full detail view for a completed (USED) sent verification request.
@@ -31,11 +32,11 @@ class VerificationDetailScreen extends StatelessWidget {
     }
   }
 
-  static String _idLabel(String? idType) {
+  static String _idLabel(String? idType, AppLocalizations l10n) {
     return switch (idType) {
-      'INE'      => 'INE / IFE',
-      'PASSPORT' => 'Pasaporte',
-      _          => idType ?? 'Desconocido',
+      'INE'      => l10n.idTypeINE,
+      'PASSPORT' => l10n.idTypePassport,
+      _          => idType ?? l10n.idTypeUnknown,
     };
   }
 
@@ -66,6 +67,7 @@ class VerificationDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -92,7 +94,7 @@ class VerificationDetailScreen extends StatelessWidget {
                       onTap: () => _openPhoto(
                         context,
                         base64Decode(challenge.subjectPhoto!),
-                        'Foto de registro',
+                        l10n.verificationDetailSelfieLabel,
                       ),
                       child: Stack(fit: StackFit.expand, children: [
                         Image.memory(
@@ -109,10 +111,10 @@ class VerificationDetailScreen extends StatelessWidget {
                               color: Colors.black.withAlpha(140),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
-                              SizedBox(width: 4),
-                              Text('Ver', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(l10n.seeAction, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                             ]),
                           ),
                         ),
@@ -147,13 +149,13 @@ class VerificationDetailScreen extends StatelessWidget {
                           const Icon(Icons.verified_rounded, color: Color(0xFF4CAF50), size: 18),
                           const SizedBox(width: 6),
                           Text(
-                            'Verificación completada',
+                            l10n.verificationDetailCompleted,
                             style: tt.labelMedium?.copyWith(color: Colors.white70),
                           ),
                         ]),
                         const SizedBox(height: 4),
                         Text(
-                          challenge.subjectFullName ?? challenge.targetEmail ?? 'Usuario',
+                          challenge.subjectFullName ?? challenge.targetEmail ?? l10n.verificationDetailUser,
                           style: tt.headlineSmall?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -182,16 +184,16 @@ class VerificationDetailScreen extends StatelessWidget {
                 _InfoCard(
                   icon: Icons.schedule_rounded,
                   children: [
-                    _Row('Solicitud enviada', _fmt(challenge.createdAt)),
+                    _Row(l10n.verificationDetailRequestSent, _fmt(challenge.createdAt)),
                     if (challenge.validatedAt != null)
-                      _Row('Verificado el', _fmt(challenge.validatedAt!)),
-                    _Row('Tipo de ID', _idLabel(challenge.subjectIdType)),
+                      _Row(l10n.verificationDetailVerifiedOn, _fmt(challenge.validatedAt!)),
+                    _Row(l10n.verificationDetailIdType, _idLabel(challenge.subjectIdType, l10n)),
                   ],
                 ),
                 const SizedBox(height: 16),
 
                 // ── FaceTec match score ──────────────────────────────────────
-                Text('Puntuación biométrica', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                Text(l10n.verificationDetailBiometricScore, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 score != null
                     ? _ScoreCard(score: score, cs: cs)
@@ -200,27 +202,27 @@ class VerificationDetailScreen extends StatelessWidget {
 
                 // ── Liveness snapshot ────────────────────────────────────────
                 if (hasSnapshot) ...[
-                  Text('Selfie de verificación', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  Text(l10n.verificationDetailVerifySelfie, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   _TappablePhoto(
                     bytes: base64Decode(challenge.livenessSnapshot!),
                     height: 200,
                     fit: BoxFit.cover,
-                    label: 'Selfie de verificación',
-                    onTap: (bytes) => _openPhoto(context, bytes, 'Selfie de verificación'),
+                    label: l10n.verificationDetailVerifySelfie,
+                    onTap: (bytes) => _openPhoto(context, bytes, l10n.verificationDetailVerifySelfie),
                   ),
                   const SizedBox(height: 16),
                 ],
 
                 // ── ID photo ─────────────────────────────────────────────────
                 if (hasIdPhoto) ...[
-                  Text('Identificación presentada', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  Text(l10n.verificationDetailIdPresented, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   _TappablePhoto(
                     bytes: base64Decode(challenge.subjectIdFrontPhoto!),
                     fit: BoxFit.fitWidth,
-                    label: 'Identificación presentada',
-                    onTap: (bytes) => _openPhoto(context, bytes, 'Identificación presentada'),
+                    label: l10n.verificationDetailIdPresented,
+                    onTap: (bytes) => _openPhoto(context, bytes, l10n.verificationDetailIdPresented),
                   ),
                 ],
 
@@ -268,18 +270,21 @@ class _TappablePhoto extends StatelessWidget {
             Positioned(
               right: 10,
               bottom: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(140),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
-                  Text('Ver', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                ]),
-              ),
+              child: Builder(builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(140),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
+                    const SizedBox(width: 4),
+                    Text(l10n.seeAction, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ]),
+                );
+              }),
             ),
           ],
         ),
@@ -343,6 +348,7 @@ class _ScoreUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -356,12 +362,12 @@ class _ScoreUnavailable extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              'No disponible',
+              l10n.verificationDetailScoreUnavailable,
               style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurfaceVariant, fontSize: 14),
             ),
             const SizedBox(height: 3),
             Text(
-              'El match FaceTec no generó puntuación en esta sesión (modo desarrollo o SDK no configurado).',
+              l10n.verificationDetailScoreUnavailableDesc,
               style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant.withAlpha(180)),
             ),
           ]),
@@ -379,12 +385,13 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final (Color color, String label) = switch (score) {
-      >= 90 => (const Color(0xFF2E7D32), 'Excelente'),
-      >= 75 => (const Color(0xFF558B2F), 'Muy alto'),
-      >= 60 => (const Color(0xFFF57F17), 'Aceptable'),
-      >= 40 => (const Color(0xFFE65100), 'Bajo'),
-      _     => (const Color(0xFFC62828), 'Insuficiente'),
+      >= 90 => (const Color(0xFF2E7D32), l10n.scoreExcellent),
+      >= 75 => (const Color(0xFF558B2F), l10n.scoreVeryHigh),
+      >= 60 => (const Color(0xFFF57F17), l10n.scoreAcceptable),
+      >= 40 => (const Color(0xFFE65100), l10n.scoreLow),
+      _     => (const Color(0xFFC62828), l10n.scoreInsufficient),
     };
 
     return Container(
@@ -431,7 +438,7 @@ class _ScoreCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Match cara vs. ID presentado',
+              l10n.verificationDetailScoreCaption,
               style: TextStyle(fontSize: 11, color: color.withAlpha(180)),
             ),
           ]),

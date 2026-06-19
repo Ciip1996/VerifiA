@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+
 /// Badge screen — displays the issued JWT badge with a countdown timer.
 /// Also shows a QR of the JWT so the verifier can scan it (optional flow).
 class BadgeScreen extends StatefulWidget {
@@ -60,6 +62,7 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F13),
       appBar: AppBar(
@@ -69,7 +72,7 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
         ),
-        title: const Text('Badge de Presencia', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.badgeTitle, style: const TextStyle(color: Colors.white)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -107,7 +110,7 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _isExpired ? 'BADGE EXPIRADO' : 'PRESENCIA VERIFICADA',
+                      _isExpired ? l10n.badgeExpired : l10n.badgeVerified,
                       style: TextStyle(
                         color: _isExpired ? const Color(0xFFEF4444) : const Color(0xFF22C55E),
                         fontSize: 16,
@@ -127,7 +130,7 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
                     ),
                     if (!_isExpired)
                       Text(
-                        'Expira en',
+                        l10n.badgeExpiresIn,
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                       ),
                   ],
@@ -138,19 +141,19 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
 
               // Badge details
               _DetailTile(
-                label: 'Verificador',
+                label: l10n.badgeVerifierLabel,
                 value: widget.tokenResponse.badgeDisplay['verifier'] ?? '-',
               ),
               _DetailTile(
-                label: 'Emitido',
+                label: l10n.badgeIssuedLabel,
                 value: _formatTime(widget.tokenResponse.badgeDisplay['issued_at'] ?? ''),
               ),
               _DetailTile(
-                label: 'Expira',
+                label: l10n.badgeExpiresLabel,
                 value: _formatTime(widget.tokenResponse.badgeDisplay['expires_at'] ?? ''),
               ),
               _DetailTile(
-                label: 'Badge ID',
+                label: l10n.badgeIdLabel,
                 value: (widget.tokenResponse.badgeDisplay['jti'] ?? '').substring(0, 8) + '...',
                 monospace: true,
               ),
@@ -163,11 +166,11 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: widget.tokenResponse.token));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('JWT copiado al portapapeles')),
+                      SnackBar(content: Text(l10n.badgeCopied)),
                     );
                   },
                   icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copiar JWT'),
+                  label: Text(l10n.badgeCopyJwt),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white54,
                     side: const BorderSide(color: Color(0xFF2A2A38)),

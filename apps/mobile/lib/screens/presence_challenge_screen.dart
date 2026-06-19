@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../l10n/app_localizations.dart';
 import '../services/facetec_service.dart';
 import '../services/passkey_service.dart';
 import '../services/app_attest_service.dart';
@@ -165,20 +166,21 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   String _mapFlowError(Object e) {
     // Network-level errors: use the global friendly message.
     if (e is NetworkException) return e.message;
+    final l10n = AppLocalizations.of(context)!;
     final raw = e.toString();
     if (raw.contains('NONCE_NOT_FOUND') || raw.contains('not found')) {
-      return 'El código QR ya no es válido. Pide uno nuevo.';
+      return l10n.presenceErrorQrNotFound;
     }
     if (raw.contains('NONCE_USED')) {
-      return 'Este código QR ya fue utilizado.';
+      return l10n.presenceErrorQrUsed;
     }
     if (raw.contains('NONCE_EXPIRED') || raw.contains('expired')) {
-      return 'El código QR expiró. Pide uno nuevo.';
+      return l10n.presenceErrorQrExpired;
     }
     if (raw.contains('PASSKEY') || raw.contains('challenge')) {
-      return 'Error en la autorización biométrica.';
+      return l10n.presenceErrorBiometric;
     }
-    return friendlyError(e);
+    return friendlyError(e, context);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -199,6 +201,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   // ── Confirm screen (TC-U03 anti-coercion) ────────────────────────────────
 
   Widget _buildConfirmScreen() {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F13),
       appBar: AppBar(
@@ -237,18 +240,18 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
               ),
               const SizedBox(height: 28),
 
-              const Text(
-                'Confirma tu verificación',
-                style: TextStyle(
+              Text(
+                l10n.presenceConfirmTitle,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Estás a punto de firmar criptográficamente tu presencia para:',
-                style: TextStyle(
+              Text(
+                l10n.presenceConfirmSubtitle,
+                style: const TextStyle(
                   color: Colors.white60,
                   fontSize: 15,
                   height: 1.5,
@@ -281,9 +284,9 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Verificador',
-                            style: TextStyle(
+                          Text(
+                            l10n.presenceVerifierLabel,
+                            style: const TextStyle(
                               color: Colors.white38,
                               fontSize: 11,
                               letterSpacing: 0.5,
@@ -317,29 +320,13 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildStep(
-                      '1',
-                      'Liveness check',
-                      'Giro de cabeza para confirmar presencia',
-                    ),
+                    _buildStep('1', l10n.presenceStep1Title, l10n.presenceStep1Subtitle),
                     const SizedBox(height: 10),
-                    _buildStep(
-                      '2',
-                      'FaceTec 3D',
-                      'Verificación facial anti-spoofing de nivel industrial',
-                    ),
+                    _buildStep('2', l10n.presenceStep2Title, l10n.presenceStep2Subtitle),
                     const SizedBox(height: 10),
-                    _buildStep(
-                      '3',
-                      'Autorización Face ID',
-                      'Firma criptográfica con Secure Enclave',
-                    ),
+                    _buildStep('3', l10n.presenceStep3Title, l10n.presenceStep3Subtitle),
                     const SizedBox(height: 10),
-                    _buildStep(
-                      '4',
-                      'Badge de presencia',
-                      'JWT efímero válido por 5 minutos',
-                    ),
+                    _buildStep('4', l10n.presenceStep4Title, l10n.presenceStep4Subtitle),
                   ],
                 ),
               ),
@@ -356,18 +343,18 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Verificar mi presencia',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: Text(
+                  l10n.presenceConfirmButton,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 12),
 
               TextButton(
                 onPressed: _onCancel,
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.white38),
+                child: Text(
+                  l10n.cancel,
+                  style: const TextStyle(color: Colors.white38),
                 ),
               ),
               const SizedBox(height: 8),
@@ -451,11 +438,12 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   }
 
   Widget _buildStepIndicator() {
+    final l10n = AppLocalizations.of(context)!;
     final steps = [
-      ('Liveness', _FlowStep.liveness),
-      ('FaceTec 3D', _FlowStep.facetec),
-      ('Face ID', _FlowStep.passkey),
-      ('Badge', _FlowStep.issuing),
+      (l10n.presenceStepLiveness, _FlowStep.liveness),
+      (l10n.presenceStepFacetec, _FlowStep.facetec),
+      (l10n.presenceStepFaceId, _FlowStep.passkey),
+      (l10n.presenceStepBadge, _FlowStep.issuing),
     ];
 
     return Row(
@@ -528,13 +516,14 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   }
 
   Widget _buildStatus() {
+    final l10n = AppLocalizations.of(context)!;
     final messages = {
-      _FlowStep.idle: 'Iniciando...',
-      _FlowStep.liveness: 'Gira la cabeza para confirmar\nque eres una persona real',
-      _FlowStep.facetec: 'Verificación 3D con FaceTec\nColoca tu cara en el óvalo',
-      _FlowStep.passkey: 'Autoriza con Face ID\npara firmar el badge',
-      _FlowStep.issuing: 'Emitiendo badge de presencia...',
-      _FlowStep.done: '¡Badge emitido!',
+      _FlowStep.idle: l10n.presenceFlowIdle,
+      _FlowStep.liveness: l10n.presenceFlowLiveness,
+      _FlowStep.facetec: l10n.presenceFlowFacetec,
+      _FlowStep.passkey: l10n.presenceFlowPasskey,
+      _FlowStep.issuing: l10n.presenceFlowIssuing,
+      _FlowStep.done: l10n.presenceFlowDone,
     };
 
     return Text(
@@ -551,6 +540,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
   // ── Error screen ─────────────────────────────────────────────────────────
 
   Widget _buildErrorScreen() {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F13),
       body: SafeArea(
@@ -565,9 +555,9 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                 size: 56,
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Error en la verificación',
-                style: TextStyle(
+              Text(
+                l10n.presenceErrorTitle,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -575,7 +565,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                _errorMessage ?? 'Error desconocido',
+                _errorMessage ?? l10n.presenceErrorUnknown,
                 style: const TextStyle(
                   color: Colors.white54,
                   fontSize: 14,
@@ -592,9 +582,9 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.white24),
                     ),
-                    child: const Text(
-                      'Volver',
-                      style: TextStyle(color: Colors.white60),
+                    child: Text(
+                      l10n.back,
+                      style: const TextStyle(color: Colors.white60),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -609,7 +599,7 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF6C63FF),
                     ),
-                    child: const Text('Reintentar'),
+                    child: Text(l10n.retry),
                   ),
                 ],
               ),

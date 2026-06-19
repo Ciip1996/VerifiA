@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
@@ -64,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showInAppBanner(IncomingChallenge challenge) {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentMaterialBanner();
 
@@ -89,14 +91,14 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Nueva solicitud de verificación',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            Text(
+              l10n.bannerNewRequest,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             Text(
               challenge.requesterFullName ??
                   challenge.requesterEmail ??
-                  'Alguien',
+                  l10n.bannerAnonymous,
               style: const TextStyle(fontSize: 12),
             ),
           ],
@@ -106,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               messenger.hideCurrentMaterialBanner();
             },
-            child: const Text('Descartar'),
+            child: Text(l10n.dismiss),
           ),
           FilledButton.tonal(
             onPressed: () {
@@ -114,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() => _tabIndex = 2);
               _inbox.markAllSeen();
             },
-            child: const Text('Ver'),
+            child: Text(l10n.seeAction),
           ),
         ],
       ),
@@ -142,13 +144,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showRejectedBanner(SentStatusChange change) {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentMaterialBanner();
 
     final c = change.challenge;
     final isRejected = change.newStatus == 'REJECTED';
-    final label = isRejected ? 'rechazó' : 'canceló';
-    final recipient = c.subjectFullName ?? c.targetEmail ?? 'El destinatario';
+    final recipient = c.subjectFullName ?? c.targetEmail ?? l10n.sentRecipient;
+    final bannerMsg = isRejected
+        ? l10n.bannerRejectedRequest(recipient)
+        : l10n.bannerCancelledRequest(recipient);
 
     messenger.showMaterialBanner(
       MaterialBanner(
@@ -169,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$recipient $label tu solicitud',
+              bannerMsg,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             if (c.targetEmail != null)
@@ -179,14 +184,14 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => messenger.hideCurrentMaterialBanner(),
-            child: const Text('Descartar'),
+            child: Text(l10n.dismiss),
           ),
           FilledButton.tonal(
             onPressed: () {
               messenger.hideCurrentMaterialBanner();
-              setState(() => _tabIndex = 2); // go to Solicitudes tab
+              setState(() => _tabIndex = 2);
             },
-            child: const Text('Ver'),
+            child: Text(l10n.seeAction),
           ),
         ],
       ),
@@ -198,11 +203,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showVerifiedBanner(SentStatusChange change) {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentMaterialBanner();
 
     final c = change.challenge;
-    final name = c.subjectFullName ?? c.targetEmail ?? 'El destinatario';
+    final name = c.subjectFullName ?? c.targetEmail ?? l10n.sentRecipient;
 
     messenger.showMaterialBanner(
       MaterialBanner(
@@ -221,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$name ya se verificó',
+              l10n.bannerVerifiedRequest(name),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             if (c.targetEmail != null)
@@ -231,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => messenger.hideCurrentMaterialBanner(),
-            child: const Text('Descartar'),
+            child: Text(l10n.dismiss),
           ),
           FilledButton.tonal(
             onPressed: () {
@@ -243,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             },
-            child: const Text('Ver'),
+            child: Text(l10n.seeAction),
           ),
         ],
       ),
@@ -281,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final unseenCount = _inbox.unseenCount;
 
@@ -322,12 +329,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: false,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.wifi_off_rounded, color: Colors.white, size: 15),
-                        SizedBox(width: 7),
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 15),
+                        const SizedBox(width: 7),
                         Text(
-                          'Sin conexión con el servidor',
-                          style: TextStyle(
+                          l10n.homeOfflineBanner,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -367,15 +374,15 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: _onTabSelected,
         backgroundColor: cs.surface,
         destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_outlined),
-            selectedIcon: Icon(Icons.qr_code_scanner),
-            label: 'Escanear',
+          NavigationDestination(
+            icon: const Icon(Icons.qr_code_scanner_outlined),
+            selectedIcon: const Icon(Icons.qr_code_scanner),
+            label: l10n.homeTabScan,
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            selectedIcon: Icon(Icons.add_circle),
-            label: 'Crear QR',
+          NavigationDestination(
+            icon: const Icon(Icons.add_circle_outline),
+            selectedIcon: const Icon(Icons.add_circle),
+            label: l10n.homeTabCreateQr,
           ),
           NavigationDestination(
             icon: Badge(
@@ -394,16 +401,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Icon(Icons.inbox_rounded),
             ),
-            label: 'Solicitudes',
+            label: l10n.homeTabInbox,
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search_rounded),
-            label: 'Buscar',
+          NavigationDestination(
+            icon: const Icon(Icons.search_outlined),
+            selectedIcon: const Icon(Icons.search_rounded),
+            label: l10n.homeTabSearch,
           ),
         ],
       ),
     );
   }
-
 }

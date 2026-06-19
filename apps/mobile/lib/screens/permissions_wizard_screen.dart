@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../l10n/app_localizations.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -105,6 +106,7 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -124,14 +126,14 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
                     fit: BoxFit.contain,
                   ),
                 ),
-                Expanded(child: _buildStepContent()),
+                Expanded(child: _buildStepContent(l10n)),
                 _buildDots(),
                 const SizedBox(height: 20),
-                _buildCTA(),
+                _buildCTA(l10n),
                 if (_step == _WizardStep.network ||
                     _step == _WizardStep.camera ||
                     _step == _WizardStep.faceId)
-                  _buildSkip(),
+                  _buildSkip(l10n),
                 const SizedBox(height: 32),
               ],
             ),
@@ -143,7 +145,7 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
 
   // ─── Step content ──────────────────────────────────────────────────────────
 
-  Widget _buildStepContent() {
+  Widget _buildStepContent(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -151,51 +153,37 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
           _WizardStep.welcome => [
               _buildHeroIcon(Icons.verified_user_rounded),
               const SizedBox(height: 32),
-              _buildTitle('Bienvenido a VerifiA'),
+              _buildTitle(l10n.permWelcomeTitle),
               const SizedBox(height: 14),
-              _buildBody(
-                'Para ofrecerte la mejor experiencia de verificación de identidad, '
-                'necesitamos configurar algunos permisos en tu dispositivo.',
-              ),
+              _buildBody(l10n.permWelcomeBody),
             ],
           _WizardStep.network => [
               _buildHeroIcon(Icons.wifi_rounded),
               const SizedBox(height: 32),
-              _buildTitle('Acceso a la red'),
+              _buildTitle(l10n.permNetworkTitle),
               const SizedBox(height: 14),
-              _buildBody(
-                'VerifiA necesita conectarse a internet para emitir y validar '
-                'badges de presencia en tiempo real de forma segura.',
-              ),
+              _buildBody(l10n.permNetworkBody),
             ],
           _WizardStep.camera => [
               _buildHeroIcon(Icons.camera_alt_rounded),
               const SizedBox(height: 32),
-              _buildTitle('Acceso a la cámara'),
+              _buildTitle(l10n.permCameraTitle),
               const SizedBox(height: 14),
-              _buildBody(
-                'VerifiA usa tu cámara para escanear códigos QR de verificadores '
-                'y para capturar tu selfie durante el proceso de detección de presencia.',
-              ),
+              _buildBody(l10n.permCameraBody),
             ],
           _WizardStep.faceId => [
               _buildHeroIcon(Icons.face_rounded),
               const SizedBox(height: 32),
-              _buildTitle('Autenticación con Face ID'),
+              _buildTitle(l10n.permFaceIdTitle),
               const SizedBox(height: 14),
-              _buildBody(
-                'Face ID confirma tu identidad antes de cada verificación. '
-                'Tus datos biométricos nunca salen de tu dispositivo.',
-              ),
+              _buildBody(l10n.permFaceIdBody),
             ],
           _WizardStep.done => [
               _buildHeroIcon(Icons.check_circle_rounded, success: true),
               const SizedBox(height: 32),
-              _buildTitle('¡Todo listo!'),
+              _buildTitle(l10n.permDoneTitle),
               const SizedBox(height: 14),
-              _buildBody(
-                'Los permisos están configurados. Ahora crea tu perfil de identidad verificada.',
-              ),
+              _buildBody(l10n.permDoneBody),
             ],
         },
       ),
@@ -278,13 +266,13 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
 
   // ─── CTA button ────────────────────────────────────────────────────────────
 
-  Widget _buildCTA() {
+  Widget _buildCTA(AppLocalizations l10n) {
     final (label, action) = switch (_step) {
-      _WizardStep.welcome  => ('Comenzar', () => _advance(_WizardStep.network)),
-      _WizardStep.network  => ('Entendido', _requestNetwork),
-      _WizardStep.camera   => ('Permitir acceso a la cámara', _requestCamera),
-      _WizardStep.faceId   => ('Configurar Face ID', _requestFaceId),
-      _WizardStep.done     => ('Continuar', _finish),
+      _WizardStep.welcome  => (l10n.permCtaBegin, () => _advance(_WizardStep.network)),
+      _WizardStep.network  => (l10n.permCtaUnderstood, _requestNetwork),
+      _WizardStep.camera   => (l10n.permCtaCamera, _requestCamera),
+      _WizardStep.faceId   => (l10n.permCtaFaceId, _requestFaceId),
+      _WizardStep.done     => (l10n.permCtaContinue, _finish),
     };
 
     return SizedBox(
@@ -329,7 +317,7 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
     );
   }
 
-  Widget _buildSkip() {
+  Widget _buildSkip(AppLocalizations l10n) {
     return Center(
       child: TextButton(
         onPressed: _loading
@@ -339,9 +327,9 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
                   _WizardStep.camera  => _WizardStep.faceId,
                   _                   => _WizardStep.done,
                 }),
-        child: const Text(
-          'Ahora no',
-          style: TextStyle(color: _muted, fontSize: 14),
+        child: Text(
+          l10n.permSkip,
+          style: const TextStyle(color: _muted, fontSize: 14),
         ),
       ),
     );

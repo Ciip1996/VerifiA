@@ -1,0 +1,1079 @@
+{
+  "@@locale": "es",
+
+  "cancel": "Cancelar",
+  "@cancel": { "description": "Generic cancel button label" },
+
+  "dismiss": "Descartar",
+  "@dismiss": { "description": "Generic dismiss button label" },
+
+  "seeAction": "Ver",
+  "@seeAction": { "description": "Generic 'see/view' button label" },
+
+  "retry": "Reintentar",
+  "@retry": { "description": "Generic retry button label" },
+
+  "back": "Volver",
+  "@back": { "description": "Generic back button label" },
+
+  "emailLabel": "Correo electrónico",
+  "@emailLabel": { "description": "Email address field label" },
+
+  "passwordLabel": "Contraseña",
+  "@passwordLabel": { "description": "Password field label" },
+
+  "idTypeINE": "INE / IFE",
+  "@idTypeINE": { "description": "Mexican voter ID type label" },
+
+  "idTypePassport": "Pasaporte",
+  "@idTypePassport": { "description": "Passport ID type label" },
+
+  "idTypeLabelShort": "Tipo de ID",
+  "@idTypeLabelShort": { "description": "Short label for ID type field" },
+
+  "curpLabel": "CURP",
+  "@curpLabel": { "description": "CURP identifier label" },
+
+  "birthDateLabel": "Fecha de nacimiento",
+  "@birthDateLabel": { "description": "Date of birth field label" },
+
+  "idTypeUnknown": "Desconocido",
+  "@idTypeUnknown": { "description": "Unknown ID type fallback" },
+
+  "errorNetwork": "Sin conexión. Verifica tu red e intenta de nuevo.",
+  "@errorNetwork": { "description": "Generic network error shown to the user" },
+
+  "errorTimeout": "El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.",
+  "@errorTimeout": { "description": "Server timeout error message" },
+
+  "errorNoConnection": "No se pudo conectar al servidor. Verifica que estés en la misma red e intenta de nuevo.",
+  "@errorNoConnection": { "description": "Unable to reach server error" },
+
+  "errorNetworkUnexpected": "Error de red inesperado. Intenta de nuevo.",
+  "@errorNetworkUnexpected": { "description": "Unexpected network error" },
+
+  "homeOfflineBanner": "Sin conexión con el servidor",
+  "@homeOfflineBanner": { "description": "Offline banner shown at the top of HomeScreen" },
+
+  "homeTabScan": "Escanear",
+  "@homeTabScan": { "description": "Navigation tab label for QR scanner" },
+
+  "homeTabCreateQr": "Crear QR",
+  "@homeTabCreateQr": { "description": "Navigation tab label for creating a QR challenge" },
+
+  "homeTabInbox": "Solicitudes",
+  "@homeTabInbox": { "description": "Navigation tab label for incoming/sent validations" },
+
+  "homeTabSearch": "Buscar",
+  "@homeTabSearch": { "description": "Navigation tab label for user search" },
+
+  "bannerNewRequest": "Nueva solicitud de verificación",
+  "@bannerNewRequest": { "description": "Title of in-app banner for a new incoming verification request" },
+
+  "bannerAnonymous": "Alguien",
+  "@bannerAnonymous": { "description": "Fallback name when the requester is unknown" },
+
+  "bannerVerifiedRequest": "{name} ya se verificó",
+  "@bannerVerifiedRequest": {
+    "description": "Banner shown when a sent challenge has been completed",
+    "placeholders": { "name": { "type": "String" } }
+  },
+
+  "bannerRejectedRequest": "{recipient} rechazó tu solicitud",
+  "@bannerRejectedRequest": {
+    "description": "Banner shown when the recipient rejected the challenge",
+    "placeholders": { "recipient": { "type": "String" } }
+  },
+
+  "bannerCancelledRequest": "{recipient} canceló tu solicitud",
+  "@bannerCancelledRequest": {
+    "description": "Banner shown when the recipient cancelled the challenge",
+    "placeholders": { "recipient": { "type": "String" } }
+  },
+
+  "createChallengeTitle": "Solicitar verificación",
+  "@createChallengeTitle": { "description": "AppBar title for CreateChallengeScreen" },
+
+  "createChallengeModeQuestion": "¿Cómo quieres enviar la solicitud?",
+  "@createChallengeModeQuestion": { "description": "Section header asking how to send the request" },
+
+  "createChallengeModeOpen": "QR Abierto",
+  "@createChallengeModeOpen": { "description": "Mode card title for open QR challenge" },
+
+  "createChallengeModeOpenDesc": "Comparte el QR o el link con cualquier app",
+  "@createChallengeModeOpenDesc": { "description": "Mode card description for open QR challenge" },
+
+  "createChallengeModeTargeted": "Enviar a usuario",
+  "@createChallengeModeTargeted": { "description": "Mode card title for targeted challenge" },
+
+  "createChallengeModeTargetedDesc": "Directo a alguien, por app o correo",
+  "@createChallengeModeTargetedDesc": { "description": "Mode card description for targeted challenge" },
+
+  "createChallengeEmailLabel": "Correo del destinatario",
+  "@createChallengeEmailLabel": { "description": "Label for the recipient email input field" },
+
+  "createChallengeEmailHint": "nombre@ejemplo.com",
+  "@createChallengeEmailHint": { "description": "Hint text for the recipient email input" },
+
+  "createChallengeButtonGenerate": "Generar QR",
+  "@createChallengeButtonGenerate": { "description": "Button label to generate an open QR code" },
+
+  "createChallengeButtonNoEmail": "Ingresa un correo para continuar",
+  "@createChallengeButtonNoEmail": { "description": "Button label when no email has been entered in targeted mode" },
+
+  "createChallengeButtonInvalidEmail": "Correo inválido",
+  "@createChallengeButtonInvalidEmail": { "description": "Button label when the entered email is invalid" },
+
+  "createChallengeButtonSend": "Enviar solicitud",
+  "@createChallengeButtonSend": { "description": "Button label to send a request to a registered user" },
+
+  "createChallengeButtonGenerateInvite": "Generar y preparar invitación",
+  "@createChallengeButtonGenerateInvite": { "description": "Button label to generate QR and invite a non-registered user" },
+
+  "createChallengeHintEmailRequired": "El correo del destinatario es obligatorio.",
+  "@createChallengeHintEmailRequired": { "description": "Hint shown below button when no email is entered" },
+
+  "createChallengeHintEmailFormat": "Ingresa un correo con formato válido (ej. nombre@ejemplo.com).",
+  "@createChallengeHintEmailFormat": { "description": "Hint shown when email format is invalid" },
+
+  "createChallengeHintRegistered": "La solicitud aparecerá en la app del destinatario.",
+  "@createChallengeHintRegistered": { "description": "Hint when recipient is registered in VerifiA" },
+
+  "createChallengeHintUnregistered": "Después de generar, podrás enviarle una invitación por correo.",
+  "@createChallengeHintUnregistered": { "description": "Hint when recipient is not registered in VerifiA" },
+
+  "createChallengeHintUnknown": "Si el correo no está en VerifiA, le enviaremos una invitación.",
+  "@createChallengeHintUnknown": { "description": "Hint when recipient registration status is unknown" },
+
+  "createChallengeHintOpen": "El QR estará activo 30 minutos. Compártelo por WhatsApp, iMessage o cualquier app.",
+  "@createChallengeHintOpen": { "description": "Hint for open QR mode below the generate button" },
+
+  "createChallengeGenerating": "Generando…",
+  "@createChallengeGenerating": { "description": "Loading label shown while the QR challenge is being generated" },
+
+  "createChallengeStatusRegistered": "Usuario registrado — recibirá la solicitud en la app",
+  "@createChallengeStatusRegistered": { "description": "Status badge when recipient is registered" },
+
+  "createChallengeStatusNotRegistered": "No está en VerifiA — podrás enviarle una invitación por correo",
+  "@createChallengeStatusNotRegistered": { "description": "Status badge when recipient is not registered" },
+
+  "createChallengeSnackSent": "Solicitud enviada a {email}",
+  "@createChallengeSnackSent": {
+    "description": "Snackbar shown after a targeted challenge is sent to a registered user",
+    "placeholders": { "email": { "type": "String" } }
+  },
+
+  "createChallengeSnackQrGenerated": "QR generado — envía la invitación a {email}",
+  "@createChallengeSnackQrGenerated": {
+    "description": "Snackbar shown after QR is generated for a non-registered user",
+    "placeholders": { "email": { "type": "String" } }
+  },
+
+  "createChallengeShareError": "No se pudo compartir: {error}",
+  "@createChallengeShareError": {
+    "description": "Snackbar shown when sharing the QR fails",
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "createChallengeLinkCopied": "Link copiado al portapapeles",
+  "@createChallengeLinkCopied": { "description": "Snackbar shown when the challenge link is copied" },
+
+  "createChallengeQrExpired": "QR expirado",
+  "@createChallengeQrExpired": { "description": "Title shown when the generated QR has expired" },
+
+  "createChallengeQrExpiredSubtitle": "Genera uno nuevo para continuar",
+  "@createChallengeQrExpiredSubtitle": { "description": "Subtitle when the QR has expired" },
+
+  "createChallengeQrReady": "QR listo para compartir",
+  "@createChallengeQrReady": { "description": "Title shown when an open QR is ready" },
+
+  "createChallengeQrReadySubtitle": "Comparte el código o el link por cualquier app",
+  "@createChallengeQrReadySubtitle": { "description": "Subtitle when open QR is ready to share" },
+
+  "createChallengeQrSent": "Solicitud enviada",
+  "@createChallengeQrSent": { "description": "Title shown after targeted QR is sent to registered user" },
+
+  "createChallengeQrSentSubtitle": "La solicitud está en la app de {email}",
+  "@createChallengeQrSentSubtitle": {
+    "description": "Subtitle after targeted QR is sent to registered user",
+    "placeholders": { "email": { "type": "String" } }
+  },
+
+  "createChallengeQrGenerated": "QR generado",
+  "@createChallengeQrGenerated": { "description": "Title shown when QR is generated for a non-registered user" },
+
+  "createChallengeQrGeneratedSubtitle": "Envía la invitación por correo para que descargue la app",
+  "@createChallengeQrGeneratedSubtitle": { "description": "Subtitle when QR generated for non-registered user" },
+
+  "createChallengeQrReadyShort": "QR listo",
+  "@createChallengeQrReadyShort": { "description": "Short title for QR ready state" },
+
+  "createChallengeQrReadyShortSubtitle": "Comparte el código o el link",
+  "@createChallengeQrReadyShortSubtitle": { "description": "Short subtitle for QR ready state" },
+
+  "createChallengeCopyLink": "Copiar link",
+  "@createChallengeCopyLink": { "description": "Button to copy the challenge link" },
+
+  "createChallengeShare": "Compartir",
+  "@createChallengeShare": { "description": "Button to share the challenge QR" },
+
+  "createChallengeInviteSent": "Invitación enviada",
+  "@createChallengeInviteSent": { "description": "Label shown after the invite email is sent" },
+
+  "createChallengeInviteSending": "Enviando…",
+  "@createChallengeInviteSending": { "description": "Loading label while sending invite email" },
+
+  "createChallengeInviteButton": "Enviar invitación por correo",
+  "@createChallengeInviteButton": { "description": "Button to send invite email to non-registered recipient" },
+
+  "createChallengeNewQr": "Generar nuevo QR",
+  "@createChallengeNewQr": { "description": "Button to generate a new QR after the previous one expired" },
+
+  "createChallengeVerifiedSubtitle": "La verificación fue completada exitosamente.",
+  "@createChallengeVerifiedSubtitle": { "description": "Subtitle shown on the QR screen when the challenge has been consumed and verified" },
+
+  "createChallengeCancelAndBack": "Cancelar y volver",
+  "@createChallengeCancelAndBack": { "description": "Button to cancel and go back to the form" },
+
+  "createChallengeCountdownLabel": "restantes",
+  "@createChallengeCountdownLabel": { "description": "Label below the countdown timer showing time remaining" },
+
+  "createChallengeInviteError": "Error al enviar: {error}",
+  "@createChallengeInviteError": {
+    "description": "Snackbar shown when sending invite email fails",
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "onboardingTitle": "Registro de identidad",
+  "@onboardingTitle": { "description": "Title for the onboarding / identity registration screen" },
+
+  "onboardingSubtitle": "Para emitir badges de presencia necesitas registrar tu identidad una sola vez. FaceTec escaneará tu cara y tu identificación oficial.",
+  "@onboardingSubtitle": { "description": "Subtitle explaining the onboarding process" },
+
+  "onboardingIdTypeLabel": "Tipo de identificación",
+  "@onboardingIdTypeLabel": { "description": "Label for the ID type selector on the onboarding form" },
+
+  "onboardingScanButton": "Escanear ID con FaceTec",
+  "@onboardingScanButton": { "description": "Button to start the FaceTec ID scan" },
+
+  "onboardingLoginLink": "¿Ya tienes cuenta? Inicia sesión",
+  "@onboardingLoginLink": { "description": "Link to the login screen from onboarding" },
+
+  "onboardingScanCancelled": "Escaneo cancelado",
+  "@onboardingScanCancelled": { "description": "Error shown when the ID scan is cancelled" },
+
+  "onboardingCaptureCancelled": "Captura cancelada",
+  "@onboardingCaptureCancelled": { "description": "Error shown when the photo capture is cancelled on Android" },
+
+  "onboardingFacetecStarting": "Iniciando FaceTec...",
+  "@onboardingFacetecStarting": { "description": "Message shown while FaceTec SDK is initializing" },
+
+  "onboardingFacetecInstructions": "Sigue las instrucciones en pantalla",
+  "@onboardingFacetecInstructions": { "description": "Instruction text while FaceTec is running" },
+
+  "onboardingPreviewTitle": "Confirma tu información",
+  "@onboardingPreviewTitle": { "description": "Title of the preview step in onboarding" },
+
+  "onboardingNameLabel": "Nombre completo",
+  "@onboardingNameLabel": { "description": "Label for the full name field in the preview step" },
+
+  "onboardingOcrReading": "Leyendo ID…",
+  "@onboardingOcrReading": { "description": "Loading text shown while OCR reads the ID" },
+
+  "onboardingNotDetected": "(no detectado)",
+  "@onboardingNotDetected": { "description": "Placeholder when no name was detected by OCR" },
+
+  "onboardingNameNotDetected": "No se detectó el nombre en la foto. Continúa y corrígelo en tu perfil.",
+  "@onboardingNameNotDetected": { "description": "Warning shown when OCR cannot detect the name" },
+
+  "onboardingInfoBirthDate": "Fecha de nac.",
+  "@onboardingInfoBirthDate": { "description": "Short label for date of birth in the onboarding preview" },
+
+  "onboardingInfoFacetecMatch": "Match FaceTec",
+  "@onboardingInfoFacetecMatch": { "description": "Label for the FaceTec match score in the preview" },
+
+  "onboardingIdFrontLabel": "Frente del ID",
+  "@onboardingIdFrontLabel": { "description": "Label for the ID front photo in the onboarding preview" },
+
+  "onboardingIdBackLabel": "Reverso del ID",
+  "@onboardingIdBackLabel": { "description": "Label for the ID back photo in the onboarding preview" },
+
+  "onboardingRepeatButton": "Repetir",
+  "@onboardingRepeatButton": { "description": "Button to repeat the ID scan in the preview step" },
+
+  "onboardingRegisterButton": "Registrarme",
+  "@onboardingRegisterButton": { "description": "Button to confirm and register the profile" },
+
+  "onboardingConfirming": "Registrando perfil...",
+  "@onboardingConfirming": { "description": "Loading message while the profile is being registered" },
+
+  "onboardingSuccess": "¡Registro exitoso!",
+  "@onboardingSuccess": { "description": "Success title shown when onboarding completes" },
+
+  "onboardingSuccessSubtitle": "Tu identidad fue verificada.",
+  "@onboardingSuccessSubtitle": { "description": "Subtitle shown on successful onboarding" },
+
+  "loginTitle": "Iniciar sesión",
+  "@loginTitle": { "description": "Title and button label for the login screen" },
+
+  "loginSubtitle": "Usa tu correo y contraseña de VerifiA",
+  "@loginSubtitle": { "description": "Subtitle on the login screen" },
+
+  "loginEmailRequired": "Ingresa tu correo electrónico",
+  "@loginEmailRequired": { "description": "Validator message when email field is empty" },
+
+  "loginEmailInvalid": "Correo electrónico no válido",
+  "@loginEmailInvalid": { "description": "Validator message when email format is invalid" },
+
+  "loginPasswordRequired": "Ingresa tu contraseña",
+  "@loginPasswordRequired": { "description": "Validator message when password field is empty" },
+
+  "loginErrorInvalidCredentials": "Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.",
+  "@loginErrorInvalidCredentials": { "description": "Error shown when login credentials are wrong" },
+
+  "loginErrorAccountNotFound": "No existe una cuenta con ese correo electrónico.",
+  "@loginErrorAccountNotFound": { "description": "Error shown when no account found for the email" },
+
+  "loginNoAccount": "¿No tienes cuenta?",
+  "@loginNoAccount": { "description": "Divider label prompting users without an account to register" },
+
+  "loginRegisterLink": "¿No tienes cuenta? Regístrate",
+  "@loginRegisterLink": { "description": "Link to onboarding from the login screen" },
+
+  "presenceConfirmTitle": "Confirma tu verificación",
+  "@presenceConfirmTitle": { "description": "Title on the anti-coercion confirmation screen" },
+
+  "presenceConfirmSubtitle": "Estás a punto de firmar criptográficamente tu presencia para:",
+  "@presenceConfirmSubtitle": { "description": "Subtitle explaining what will happen on confirmation" },
+
+  "presenceVerifierLabel": "Verificador",
+  "@presenceVerifierLabel": { "description": "Label for the verifier ID box on the confirmation screen" },
+
+  "presenceStep1Title": "Liveness check",
+  "@presenceStep1Title": { "description": "Step 1 title in the presence confirmation flow" },
+
+  "presenceStep1Subtitle": "Giro de cabeza para confirmar presencia",
+  "@presenceStep1Subtitle": { "description": "Step 1 subtitle in the presence confirmation flow" },
+
+  "presenceStep2Title": "FaceTec 3D",
+  "@presenceStep2Title": { "description": "Step 2 title in the presence confirmation flow" },
+
+  "presenceStep2Subtitle": "Verificación facial anti-spoofing de nivel industrial",
+  "@presenceStep2Subtitle": { "description": "Step 2 subtitle in the presence confirmation flow" },
+
+  "presenceStep3Title": "Autorización Face ID",
+  "@presenceStep3Title": { "description": "Step 3 title in the presence confirmation flow" },
+
+  "presenceStep3Subtitle": "Firma criptográfica con Secure Enclave",
+  "@presenceStep3Subtitle": { "description": "Step 3 subtitle in the presence confirmation flow" },
+
+  "presenceStep4Title": "Badge de presencia",
+  "@presenceStep4Title": { "description": "Step 4 title in the presence confirmation flow" },
+
+  "presenceStep4Subtitle": "JWT efímero válido por 5 minutos",
+  "@presenceStep4Subtitle": { "description": "Step 4 subtitle in the presence confirmation flow" },
+
+  "presenceConfirmButton": "Verificar mi presencia",
+  "@presenceConfirmButton": { "description": "CTA button to start the verification flow" },
+
+  "presenceFlowIdle": "Iniciando...",
+  "@presenceFlowIdle": { "description": "Status message at the start of the verification flow" },
+
+  "presenceFlowLiveness": "Gira la cabeza para confirmar\nque eres una persona real",
+  "@presenceFlowLiveness": { "description": "Status message during the liveness step" },
+
+  "presenceFlowFacetec": "Verificación 3D con FaceTec\nColoca tu cara en el óvalo",
+  "@presenceFlowFacetec": { "description": "Status message during the FaceTec step" },
+
+  "presenceFlowPasskey": "Autoriza con Face ID\npara firmar el badge",
+  "@presenceFlowPasskey": { "description": "Status message during the passkey/Face ID step" },
+
+  "presenceFlowIssuing": "Emitiendo badge de presencia...",
+  "@presenceFlowIssuing": { "description": "Status message while the badge is being issued" },
+
+  "presenceFlowDone": "¡Badge emitido!",
+  "@presenceFlowDone": { "description": "Status message when the badge has been successfully issued" },
+
+  "presenceStepLiveness": "Liveness",
+  "@presenceStepLiveness": { "description": "Step indicator label for liveness check" },
+
+  "presenceStepFacetec": "FaceTec 3D",
+  "@presenceStepFacetec": { "description": "Step indicator label for FaceTec" },
+
+  "presenceStepFaceId": "Face ID",
+  "@presenceStepFaceId": { "description": "Step indicator label for Face ID passkey" },
+
+  "presenceStepBadge": "Badge",
+  "@presenceStepBadge": { "description": "Step indicator label for badge issuance" },
+
+  "presenceErrorTitle": "Error en la verificación",
+  "@presenceErrorTitle": { "description": "Title on the error screen of the presence challenge flow" },
+
+  "presenceErrorUnknown": "Error desconocido",
+  "@presenceErrorUnknown": { "description": "Fallback error message when no specific message is available" },
+
+  "presenceErrorQrNotFound": "El código QR ya no es válido. Pide uno nuevo.",
+  "@presenceErrorQrNotFound": { "description": "Error when the QR nonce is not found" },
+
+  "presenceErrorQrUsed": "Este código QR ya fue utilizado.",
+  "@presenceErrorQrUsed": { "description": "Error when the QR nonce has already been used" },
+
+  "presenceErrorQrExpired": "El código QR expiró. Pide uno nuevo.",
+  "@presenceErrorQrExpired": { "description": "Error when the QR nonce has expired" },
+
+  "presenceErrorBiometric": "Error en la autorización biométrica.",
+  "@presenceErrorBiometric": { "description": "Error when the passkey/biometric authorization fails" },
+
+  "inboxTabReceived": "Recibidas",
+  "@inboxTabReceived": { "description": "Tab label for received verification requests" },
+
+  "inboxTabSent": "Enviadas",
+  "@inboxTabSent": { "description": "Tab label for sent verification requests" },
+
+  "inboxEmptyReceived": "Sin solicitudes recibidas",
+  "@inboxEmptyReceived": { "description": "Empty state title for the received tab" },
+
+  "inboxEmptyReceivedDesc": "Cuando alguien te solicite verificar tu identidad, aparecerá aquí.",
+  "@inboxEmptyReceivedDesc": { "description": "Empty state description for the received tab" },
+
+  "inboxRejectTitle": "¿Rechazar solicitud?",
+  "@inboxRejectTitle": { "description": "Dialog title when rejecting an incoming challenge" },
+
+  "inboxRejectContent": "Se notificará a {name} que rechazaste la verificación.",
+  "@inboxRejectContent": {
+    "description": "Dialog body when rejecting an incoming challenge",
+    "placeholders": { "name": { "type": "String" } }
+  },
+
+  "inboxRejectButton": "Rechazar",
+  "@inboxRejectButton": { "description": "Button to confirm rejecting an incoming challenge" },
+
+  "inboxRejectedSnack": "Solicitud rechazada",
+  "@inboxRejectedSnack": { "description": "Snackbar shown after rejecting a challenge" },
+
+  "inboxTimeExpired": "No verificada a tiempo — caducada",
+  "@inboxTimeExpired": { "description": "Time label shown when an incoming challenge has expired" },
+
+  "inboxTimeHoursMinutes": "{hours}h {minutes}m restantes",
+  "@inboxTimeHoursMinutes": {
+    "description": "Time remaining label for hours and minutes",
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+
+  "inboxTimeMinutes": "{minutes}m restantes",
+  "@inboxTimeMinutes": {
+    "description": "Time remaining label for minutes only",
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+
+  "inboxAnonymousRequest": "Solicitud anónima",
+  "@inboxAnonymousRequest": { "description": "Fallback sender name for anonymous incoming requests" },
+
+  "inboxExpiredLabel": "Caducada",
+  "@inboxExpiredLabel": { "description": "Badge label shown when an incoming challenge has expired" },
+
+  "inboxResumeButton": "Retomar",
+  "@inboxResumeButton": { "description": "Button to resume an in-progress verification" },
+
+  "inboxVerifyButton": "Verificar",
+  "@inboxVerifyButton": { "description": "Button to start verifying an incoming challenge" },
+
+  "inboxEmptySent": "Sin solicitudes enviadas",
+  "@inboxEmptySent": { "description": "Empty state title for the sent tab" },
+
+  "inboxEmptySentDesc": "Busca a un usuario y envíale una solicitud de verificación.",
+  "@inboxEmptySentDesc": { "description": "Empty state description for the sent tab" },
+
+  "inboxCancelTitle": "¿Cancelar solicitud?",
+  "@inboxCancelTitle": { "description": "Dialog title when cancelling a sent challenge" },
+
+  "inboxCancelContent": "La solicitud enviada a {email} será cancelada y ya no podrá ser verificada.",
+  "@inboxCancelContent": {
+    "description": "Dialog body when cancelling a sent challenge",
+    "placeholders": { "email": { "type": "String" } }
+  },
+
+  "inboxKeepButton": "No, mantener",
+  "@inboxKeepButton": { "description": "Button to keep (not cancel) a sent challenge" },
+
+  "inboxCancelButton": "Cancelar solicitud",
+  "@inboxCancelButton": { "description": "Button to confirm cancelling a sent challenge" },
+
+  "inboxCancelTooltip": "Cancelar solicitud",
+  "@inboxCancelTooltip": { "description": "Tooltip on the cancel icon in the sent card" },
+
+  "inboxCancelledSnack": "Solicitud cancelada",
+  "@inboxCancelledSnack": { "description": "Snackbar shown after a challenge is cancelled" },
+
+  "sentStatusUsed": "Completada",
+  "@sentStatusUsed": { "description": "Status chip label when a sent challenge is completed (USED)" },
+
+  "sentStatusInProgress": "Verificando",
+  "@sentStatusInProgress": { "description": "Status chip label when verification is in progress" },
+
+  "sentStatusExpired": "Expirada",
+  "@sentStatusExpired": { "description": "Status chip label when a sent challenge has expired" },
+
+  "sentStatusRejected": "Rechazada",
+  "@sentStatusRejected": { "description": "Status chip label when a sent challenge was rejected" },
+
+  "sentStatusCancelled": "Cancelada",
+  "@sentStatusCancelled": { "description": "Status chip label when a sent challenge was cancelled" },
+
+  "sentStatusPending": "Pendiente",
+  "@sentStatusPending": { "description": "Status chip label when a sent challenge is pending" },
+
+  "sentRecipient": "Destinatario",
+  "@sentRecipient": { "description": "Fallback text when recipient name and email are both null" },
+
+  "sentTimeAgoMinutes": "Hace {minutes}m",
+  "@sentTimeAgoMinutes": {
+    "description": "Relative time label for minutes ago",
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+
+  "sentTimeAgoHours": "Hace {hours}h",
+  "@sentTimeAgoHours": {
+    "description": "Relative time label for hours ago",
+    "placeholders": { "hours": { "type": "int" } }
+  },
+
+  "badgeTitle": "Badge de Presencia",
+  "@badgeTitle": { "description": "AppBar title for the Badge screen" },
+
+  "badgeExpired": "BADGE EXPIRADO",
+  "@badgeExpired": { "description": "Status label shown when the badge has expired" },
+
+  "badgeVerified": "PRESENCIA VERIFICADA",
+  "@badgeVerified": { "description": "Status label shown when the badge is valid" },
+
+  "badgeExpiresIn": "Expira en",
+  "@badgeExpiresIn": { "description": "Label below the badge countdown timer" },
+
+  "badgeVerifierLabel": "Verificador",
+  "@badgeVerifierLabel": { "description": "Label for the verifier field in badge details" },
+
+  "badgeIssuedLabel": "Emitido",
+  "@badgeIssuedLabel": { "description": "Label for the issued-at field in badge details" },
+
+  "badgeExpiresLabel": "Expira",
+  "@badgeExpiresLabel": { "description": "Label for the expires-at field in badge details" },
+
+  "badgeIdLabel": "Badge ID",
+  "@badgeIdLabel": { "description": "Label for the badge ID (JTI) field" },
+
+  "badgeCopied": "JWT copiado al portapapeles",
+  "@badgeCopied": { "description": "Snackbar shown after the JWT is copied" },
+
+  "badgeCopyJwt": "Copiar JWT",
+  "@badgeCopyJwt": { "description": "Button to copy the JWT to clipboard" },
+
+  "profileLogoutTitle": "Cerrar sesión",
+  "@profileLogoutTitle": { "description": "Dialog title for the logout confirmation" },
+
+  "profileLogoutContent": "¿Seguro que quieres cerrar sesión?",
+  "@profileLogoutContent": { "description": "Dialog body for the logout confirmation" },
+
+  "profileLogoutButton": "Cerrar sesión",
+  "@profileLogoutButton": { "description": "Button to confirm logout" },
+
+  "profileLoadError": "No se pudo cargar el perfil",
+  "@profileLoadError": { "description": "Error title when the profile fails to load" },
+
+  "profileTitle": "Mi Perfil",
+  "@profileTitle": { "description": "AppBar title for the account profile screen" },
+
+  "profileVerifiedBadge": "Identidad verificada",
+  "@profileVerifiedBadge": { "description": "Badge label showing the identity is verified" },
+
+  "profileEmailLabel": "Correo electrónico",
+  "@profileEmailLabel": { "description": "Label for the email info tile in the profile screen" },
+
+  "profileIdTypeLabel": "Tipo de ID",
+  "@profileIdTypeLabel": { "description": "Label for the ID type info tile in the profile screen" },
+
+  "profileCurpLabel": "CURP",
+  "@profileCurpLabel": { "description": "Label for the CURP info tile in the profile screen" },
+
+  "profileBirthDateLabel": "Fecha de nacimiento",
+  "@profileBirthDateLabel": { "description": "Label for the date of birth info tile in the profile screen" },
+
+  "profileLogoutButtonLabel": "Cerrar sesión",
+  "@profileLogoutButtonLabel": { "description": "Logout button label in the profile screen" },
+
+  "livenessTitle": "Verificación de Presencia",
+  "@livenessTitle": { "description": "Title shown at the top of the liveness screen" },
+
+  "livenessInstructionCenter": "Centra tu cara en el óvalo",
+  "@livenessInstructionCenter": { "description": "Instruction to center the face in the oval" },
+
+  "livenessInstructionTurn": "Gira la cabeza a un lado",
+  "@livenessInstructionTurn": { "description": "Instruction to turn the head to one side" },
+
+  "livenessInstructionReturn": "Regresa al centro",
+  "@livenessInstructionReturn": { "description": "Instruction to return the head to center" },
+
+  "livenessInstructionDone": "¡Verificación completada!",
+  "@livenessInstructionDone": { "description": "Message shown when liveness check is complete" },
+
+  "livenessInstructionFallback": "Verificando presencia...",
+  "@livenessInstructionFallback": { "description": "Instruction shown in fallback mode when camera is unavailable" },
+
+  "livenessCountdownReady": "¡Prepárate para la foto!",
+  "@livenessCountdownReady": { "description": "Message shown before the photo countdown starts" },
+
+  "livenessCountdownShoot": "¡Foto!",
+  "@livenessCountdownShoot": { "description": "Message shown at the moment the photo is taken" },
+
+  "livenessQualityNoFace": "No se detectó rostro — acércate un poco",
+  "@livenessQualityNoFace": { "description": "Rejection reason when no face is detected in the photo" },
+
+  "livenessQualityEyesClosed": "Abre los ojos para la foto",
+  "@livenessQualityEyesClosed": { "description": "Rejection reason when eyes are closed in the photo" },
+
+  "livenessQualityFaceAngle": "Mira de frente a la cámara",
+  "@livenessQualityFaceAngle": { "description": "Rejection reason when face is turned too far sideways" },
+
+  "livenessQualityTilted": "Endereza la cabeza",
+  "@livenessQualityTilted": { "description": "Rejection reason when head is tilted too much" },
+
+  "scannerCameraError": "No se pudo iniciar la cámara",
+  "@scannerCameraError": { "description": "Error title when the camera cannot be started for QR scanning" },
+
+  "scannerStarting": "Iniciando cámara…",
+  "@scannerStarting": { "description": "Placeholder message while the scanner camera is starting" },
+
+  "scannerPermissionTitle": "Se necesita acceso a la cámara",
+  "@scannerPermissionTitle": { "description": "Title shown when camera permission is denied for QR scanner" },
+
+  "scannerPermissionSubtitle": "Ve a Ajustes → Verifia → Cámara y actívala, luego pulsa Reintentar.",
+  "@scannerPermissionSubtitle": { "description": "Instructions to grant camera permission for QR scanner" },
+
+  "scannerInstruction": "Escanea el QR del verificador",
+  "@scannerInstruction": { "description": "Instruction text shown below the QR viewfinder" },
+
+  "searchHint": "Buscar por nombre o correo…",
+  "@searchHint": { "description": "Hint text in the user search bar" },
+
+  "searchTitle": "Busca usuarios de VerifiA",
+  "@searchTitle": { "description": "Empty state title for the user search screen" },
+
+  "searchDesc": "Escribe al menos 2 caracteres para buscar por nombre o correo electrónico.",
+  "@searchDesc": { "description": "Empty state description for the user search screen" },
+
+  "searchNoResults": "Sin resultados para \"{query}\"",
+  "@searchNoResults": {
+    "description": "Title shown when search returns no results",
+    "placeholders": { "query": { "type": "String" } }
+  },
+
+  "searchNoResultsDesc": "Intenta con otro nombre o correo.",
+  "@searchNoResultsDesc": { "description": "Description shown when search returns no results" },
+
+  "searchYou": "Tú",
+  "@searchYou": { "description": "Badge shown next to the user's own account in search results" },
+
+  "setPasswordTitle": "Crea tu acceso web",
+  "@setPasswordTitle": { "description": "Title for the set-password screen after onboarding" },
+
+  "setPasswordSubtitle": "Con una cuenta podrás iniciar sesión en el portal web para generar QRs de verificación y consultar tu historial.",
+  "@setPasswordSubtitle": { "description": "Subtitle explaining the web account on the set-password screen" },
+
+  "setPasswordEmailHint": "tu@email.com",
+  "@setPasswordEmailHint": { "description": "Hint text for the email field on the set-password screen" },
+
+  "setPasswordEmailRequired": "Ingresa tu correo",
+  "@setPasswordEmailRequired": { "description": "Validator message when email is empty on set-password screen" },
+
+  "setPasswordEmailInvalid": "Correo no válido",
+  "@setPasswordEmailInvalid": { "description": "Validator message when email format is invalid on set-password screen" },
+
+  "setPasswordPasswordHint": "Mínimo 8 caracteres",
+  "@setPasswordPasswordHint": { "description": "Hint text for the password field on set-password screen" },
+
+  "setPasswordPasswordMinLength": "Mínimo 8 caracteres",
+  "@setPasswordPasswordMinLength": { "description": "Validator message when password is too short" },
+
+  "setPasswordConfirmLabel": "Confirmar contraseña",
+  "@setPasswordConfirmLabel": { "description": "Label for the confirm password field" },
+
+  "setPasswordPasswordMismatch": "Las contraseñas no coinciden",
+  "@setPasswordPasswordMismatch": { "description": "Validator message when passwords do not match" },
+
+  "setPasswordCreateButton": "Crear cuenta",
+  "@setPasswordCreateButton": { "description": "Button to create the web account on set-password screen" },
+
+  "setPasswordSkip": "Omitir por ahora",
+  "@setPasswordSkip": { "description": "Button to skip creating a web account for now" },
+
+  "wizardWelcomeTitle": "Bienvenido a VerifiA",
+  "@wizardWelcomeTitle": { "description": "Welcome step title in the permissions wizard" },
+
+  "wizardWelcomeDesc": "Para ofrecerte la mejor experiencia de verificación de identidad, necesitamos configurar algunos permisos en tu dispositivo.",
+  "@wizardWelcomeDesc": { "description": "Welcome step description in the permissions wizard" },
+
+  "wizardNetworkTitle": "Acceso a la red",
+  "@wizardNetworkTitle": { "description": "Network step title in the permissions wizard" },
+
+  "wizardNetworkDesc": "VerifiA necesita conectarse a internet para emitir y validar badges de presencia en tiempo real de forma segura.",
+  "@wizardNetworkDesc": { "description": "Network step description in the permissions wizard" },
+
+  "wizardCameraTitle": "Acceso a la cámara",
+  "@wizardCameraTitle": { "description": "Camera step title in the permissions wizard" },
+
+  "wizardCameraDesc": "VerifiA usa tu cámara para escanear códigos QR de verificadores y para capturar tu selfie durante el proceso de detección de presencia.",
+  "@wizardCameraDesc": { "description": "Camera step description in the permissions wizard" },
+
+  "wizardFaceIdTitle": "Autenticación con Face ID",
+  "@wizardFaceIdTitle": { "description": "Face ID step title in the permissions wizard" },
+
+  "wizardFaceIdDesc": "Face ID confirma tu identidad antes de cada verificación. Tus datos biométricos nunca salen de tu dispositivo.",
+  "@wizardFaceIdDesc": { "description": "Face ID step description in the permissions wizard" },
+
+  "wizardDoneTitle": "¡Todo listo!",
+  "@wizardDoneTitle": { "description": "Done step title in the permissions wizard" },
+
+  "wizardDoneDesc": "Los permisos están configurados. Ahora crea tu perfil de identidad verificada.",
+  "@wizardDoneDesc": { "description": "Done step description in the permissions wizard" },
+
+  "wizardButtonStart": "Comenzar",
+  "@wizardButtonStart": { "description": "CTA button label on the welcome step" },
+
+  "wizardButtonUnderstood": "Entendido",
+  "@wizardButtonUnderstood": { "description": "CTA button label on the network step" },
+
+  "wizardButtonCamera": "Permitir acceso a la cámara",
+  "@wizardButtonCamera": { "description": "CTA button label on the camera step" },
+
+  "wizardButtonFaceId": "Configurar Face ID",
+  "@wizardButtonFaceId": { "description": "CTA button label on the Face ID step" },
+
+  "wizardButtonContinue": "Continuar",
+  "@wizardButtonContinue": { "description": "CTA button label on the done step" },
+
+  "wizardButtonLater": "Ahora no",
+  "@wizardButtonLater": { "description": "Skip button label on permission steps" },
+
+  "verDetailSelfieLabel": "Foto de registro",
+  "@verDetailSelfieLabel": { "description": "Label for the registration selfie photo in verification detail" },
+
+  "verDetailZoomHint": "Ver",
+  "@verDetailZoomHint": { "description": "Zoom hint overlay text on tappable photos" },
+
+  "verDetailCompleted": "Verificación completada",
+  "@verDetailCompleted": { "description": "Label shown in the hero header of a completed verification" },
+
+  "verDetailRequestSent": "Solicitud enviada",
+  "@verDetailRequestSent": { "description": "Label for the sent date in the info card" },
+
+  "verDetailVerifiedAt": "Verificado el",
+  "@verDetailVerifiedAt": { "description": "Label for the verified date in the info card" },
+
+  "verDetailIdType": "Tipo de ID",
+  "@verDetailIdType": { "description": "Label for the ID type row in the info card" },
+
+  "verDetailBiometricScore": "Puntuación biométrica",
+  "@verDetailBiometricScore": { "description": "Section title for the FaceTec match score" },
+
+  "verDetailSelfieVerification": "Selfie de verificación",
+  "@verDetailSelfieVerification": { "description": "Section title and label for the liveness snapshot" },
+
+  "verDetailIdPhotoLabel": "Identificación presentada",
+  "@verDetailIdPhotoLabel": { "description": "Section title for the submitted ID photo" },
+
+  "verDetailScoreUnavailable": "No disponible",
+  "@verDetailScoreUnavailable": { "description": "Title shown when the FaceTec score is not available" },
+
+  "verDetailScoreUnavailableDesc": "El match FaceTec no generó puntuación en esta sesión (modo desarrollo o SDK no configurado).",
+  "@verDetailScoreUnavailableDesc": { "description": "Description when FaceTec score is unavailable" },
+
+  "verDetailScoreExcellent": "Excelente",
+  "@verDetailScoreExcellent": { "description": "Score label for >= 90" },
+
+  "verDetailScoreVeryHigh": "Muy alto",
+  "@verDetailScoreVeryHigh": { "description": "Score label for >= 75" },
+
+  "verDetailScoreAcceptable": "Aceptable",
+  "@verDetailScoreAcceptable": { "description": "Score label for >= 60" },
+
+  "verDetailScoreLow": "Bajo",
+  "@verDetailScoreLow": { "description": "Score label for >= 40" },
+
+  "verDetailScoreInsufficient": "Insuficiente",
+  "@verDetailScoreInsufficient": { "description": "Score label for < 40" },
+
+  "verDetailScoreMatchLabel": "Match cara vs. ID presentado",
+  "@verDetailScoreMatchLabel": { "description": "Description label below the score bar" },
+
+  "publicProfileVerifiedFacetec": "Identidad verificada con FaceTec",
+  "@publicProfileVerifiedFacetec": { "description": "Verified badge text on public profile screen" },
+
+  "publicProfileAge": "{age} años",
+  "@publicProfileAge": {
+    "description": "Age display on public profile screen",
+    "placeholders": { "age": { "type": "int" } }
+  },
+
+  "publicProfileIdLabel": "Identificación oficial",
+  "@publicProfileIdLabel": { "description": "Section title for the official ID photo on public profile" },
+
+  "publicProfileIdDesc": "Documento escaneado durante el registro",
+  "@publicProfileIdDesc": { "description": "Caption below the ID photo on public profile" },
+
+  "publicProfileScoreHigh": "Alta coincidencia",
+  "@publicProfileScoreHigh": { "description": "Score label for >= 70 on public profile" },
+
+  "publicProfileScoreMedium": "Coincidencia media",
+  "@publicProfileScoreMedium": { "description": "Score label for >= 40 on public profile" },
+
+  "publicProfileScoreLow": "Coincidencia baja",
+  "@publicProfileScoreLow": { "description": "Score label for < 40 on public profile" },
+
+  "publicProfileFacetecTitle": "FaceTec ID Match",
+  "@publicProfileFacetecTitle": { "description": "Title for the FaceTec score card on public profile" },
+
+  "publicProfileFacetecDesc": "Score de coincidencia cara vs. ID al registrarse",
+  "@publicProfileFacetecDesc": { "description": "Description for the FaceTec score on public profile" },
+
+  "publicProfileScoreLabelFull": "{label} — {score}/100",
+  "@publicProfileScoreLabelFull": {
+    "description": "Full score label combining label and numeric score on public profile",
+    "placeholders": {
+      "label": { "type": "String" },
+      "score": { "type": "int" }
+    }
+  },
+
+  "publicProfileRequestSentSnack": "Solicitud de verificación enviada",
+  "@publicProfileRequestSentSnack": { "description": "Snackbar shown after a verification request is sent from public profile" },
+
+  "publicProfileButtonSent": "Solicitud enviada",
+  "@publicProfileButtonSent": { "description": "Button label after the verification request is sent" },
+
+  "publicProfileButtonSend": "Enviar solicitud de verificación",
+  "@publicProfileButtonSend": { "description": "Button to send a verification request from public profile" },
+
+  "livenessMockInstruction1": "Mantén el teléfono frente a tu cara",
+  "@livenessMockInstruction1": { "description": "Mock liveness instruction 1" },
+
+  "livenessMockInstruction2": "Gira lentamente hacia la derecha",
+  "@livenessMockInstruction2": { "description": "Mock liveness instruction 2" },
+
+  "livenessMockInstruction3": "Regresa al centro",
+  "@livenessMockInstruction3": { "description": "Mock liveness instruction 3" },
+
+  "livenessMockInstruction4": "Gira lentamente hacia la izquierda",
+  "@livenessMockInstruction4": { "description": "Mock liveness instruction 4" },
+
+  "livenessMockInstruction5": "Mira directamente a la cámara",
+  "@livenessMockInstruction5": { "description": "Mock liveness instruction 5" },
+
+  "livenessMockCompleted": "Completado",
+  "@livenessMockCompleted": { "description": "Progress label when mock liveness is complete" },
+
+  "loginEmailLabel": "Correo electrónico",
+  "@loginEmailLabel": { "description": "Email field label on the login screen" },
+
+  "loginEmailHint": "tu@email.com",
+  "@loginEmailHint": { "description": "Email field placeholder on the login screen" },
+
+  "setPasswordLabel": "Contraseña",
+  "@setPasswordLabel": { "description": "Password field label on the set-password screen" },
+
+  "setPasswordHint": "Mínimo 8 caracteres",
+  "@setPasswordHint": { "description": "Password field hint on the set-password screen" },
+
+  "setPasswordButton": "Crear cuenta",
+  "@setPasswordButton": { "description": "Primary button label on set-password screen" },
+
+  "setPasswordMismatch": "Las contraseñas no coinciden",
+  "@setPasswordMismatch": { "description": "Validation error when passwords don't match" },
+
+  "setPasswordTooShort": "Mínimo 8 caracteres",
+  "@setPasswordTooShort": { "description": "Validation error when password is too short" },
+
+  "publicProfileLoadError": "No se pudo cargar el perfil",
+  "@publicProfileLoadError": { "description": "Error title shown when a public profile fails to load" },
+
+  "permWelcomeTitle": "Bienvenido a VerifiA",
+  "@permWelcomeTitle": { "description": "Permissions wizard welcome step title" },
+
+  "permWelcomeBody": "Para ofrecerte la mejor experiencia de verificación de identidad, necesitamos configurar algunos permisos en tu dispositivo.",
+  "@permWelcomeBody": { "description": "Permissions wizard welcome step body" },
+
+  "permNetworkTitle": "Acceso a la red",
+  "@permNetworkTitle": { "description": "Permissions wizard network step title" },
+
+  "permNetworkBody": "VerifiA necesita conectarse a internet para emitir y validar badges de presencia en tiempo real de forma segura.",
+  "@permNetworkBody": { "description": "Permissions wizard network step body" },
+
+  "permCameraTitle": "Acceso a la cámara",
+  "@permCameraTitle": { "description": "Permissions wizard camera step title" },
+
+  "permCameraBody": "VerifiA usa tu cámara para escanear códigos QR de verificadores y para capturar tu selfie durante el proceso de detección de presencia.",
+  "@permCameraBody": { "description": "Permissions wizard camera step body" },
+
+  "permFaceIdTitle": "Autenticación con Face ID",
+  "@permFaceIdTitle": { "description": "Permissions wizard Face ID step title" },
+
+  "permFaceIdBody": "Face ID confirma tu identidad antes de cada verificación. Tus datos biométricos nunca salen de tu dispositivo.",
+  "@permFaceIdBody": { "description": "Permissions wizard Face ID step body" },
+
+  "permDoneTitle": "¡Todo listo!",
+  "@permDoneTitle": { "description": "Permissions wizard done step title" },
+
+  "permDoneBody": "Los permisos están configurados. Ahora crea tu perfil de identidad verificada.",
+  "@permDoneBody": { "description": "Permissions wizard done step body" },
+
+  "permCtaBegin": "Comenzar",
+  "@permCtaBegin": { "description": "Permissions wizard CTA for welcome step" },
+
+  "permCtaUnderstood": "Entendido",
+  "@permCtaUnderstood": { "description": "Permissions wizard CTA for network step" },
+
+  "permCtaCamera": "Permitir acceso a la cámara",
+  "@permCtaCamera": { "description": "Permissions wizard CTA for camera step" },
+
+  "permCtaFaceId": "Configurar Face ID",
+  "@permCtaFaceId": { "description": "Permissions wizard CTA for Face ID step" },
+
+  "permCtaContinue": "Continuar",
+  "@permCtaContinue": { "description": "Permissions wizard CTA for done step" },
+
+  "permSkip": "Ahora no",
+  "@permSkip": { "description": "Permissions wizard skip button label" },
+
+  "scannerCameraError": "No se pudo iniciar la cámara",
+  "@scannerCameraError": { "description": "Error title shown when the QR scanner camera fails to start" },
+
+  "scannerStarting": "Iniciando cámara…",
+  "@scannerStarting": { "description": "Placeholder text while the scanner camera initializes" },
+
+  "scannerPermissionTitle": "Se necesita acceso a la cámara",
+  "@scannerPermissionTitle": { "description": "Title shown when camera permission is denied on scanner screen" },
+
+  "scannerPermissionSubtitle": "Ve a Ajustes → Verifia → Cámara y actívala, luego pulsa Reintentar.",
+  "@scannerPermissionSubtitle": { "description": "Instructions to grant camera permission for QR scanner" },
+
+  "scannerInstruction": "Escanea el QR del verificador",
+  "@scannerInstruction": { "description": "Bottom instruction label on the QR scanner screen" },
+
+  "scannerAllowCamera": "Permitir cámara",
+  "@scannerAllowCamera": { "description": "Button label to request camera permission on QR scanner screen" },
+
+  "scannerOpenSettings": "Abrir ajustes",
+  "@scannerOpenSettings": { "description": "Button label to open app settings when camera permission is permanently denied" },
+
+  "searchHint": "Buscar por nombre o correo…",
+  "@searchHint": { "description": "Hint text in the user search field" },
+
+  "searchTitle": "Busca usuarios de VerifiA",
+  "@searchTitle": { "description": "Empty-state title on the user search screen" },
+
+  "searchDesc": "Escribe al menos 2 caracteres para buscar por nombre o correo electrónico.",
+  "@searchDesc": { "description": "Empty-state description on the user search screen" },
+
+  "searchNoResults": "Sin resultados para \"{query}\"",
+  "@searchNoResults": {
+    "description": "No-results message on the search screen, includes query",
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+
+  "searchNoResultsDesc": "Intenta con otro nombre o correo.",
+  "@searchNoResultsDesc": { "description": "Secondary no-results hint on the search screen" },
+
+  "searchYou": "Tú",
+  "@searchYou": { "description": "Badge shown on a search result that is the logged-in user" },
+
+  "livenessTitle": "Verificación de Presencia",
+  "@livenessTitle": { "description": "Title shown at the top of all liveness screens" },
+
+  "livenessInstructionCenter": "Centra tu cara en el óvalo",
+  "@livenessInstructionCenter": { "description": "Liveness instruction for centering face" },
+
+  "livenessInstructionTurn": "Gira la cabeza a un lado",
+  "@livenessInstructionTurn": { "description": "Liveness instruction to turn head" },
+
+  "livenessInstructionReturn": "Regresa al centro",
+  "@livenessInstructionReturn": { "description": "Liveness instruction to return to center" },
+
+  "livenessInstructionDone": "¡Verificación completada!",
+  "@livenessInstructionDone": { "description": "Liveness instruction shown when verification is complete" },
+
+  "livenessInstructionFallback": "Verificando presencia...",
+  "@livenessInstructionFallback": { "description": "Liveness instruction shown in fallback mode" },
+
+  "livenessCountdownReady": "¡Prepárate para la foto!",
+  "@livenessCountdownReady": { "description": "Liveness countdown ready message" },
+
+  "livenessCountdownShoot": "¡Foto!",
+  "@livenessCountdownShoot": { "description": "Liveness countdown shoot message" },
+
+  "livenessQualityNoFace": "No se detectó rostro — acércate un poco",
+  "@livenessQualityNoFace": { "description": "Quality check failure: no face detected" },
+
+  "livenessQualityEyesClosed": "Abre los ojos para la foto",
+  "@livenessQualityEyesClosed": { "description": "Quality check failure: eyes not open" },
+
+  "livenessQualityFaceAngle": "Mira de frente a la cámara",
+  "@livenessQualityFaceAngle": { "description": "Quality check failure: face angle too high" },
+
+  "livenessQualityTilted": "Endereza la cabeza",
+  "@livenessQualityTilted": { "description": "Quality check failure: head tilted" },
+
+  "verificationDetailCompleted": "Verificación completada",
+  "@verificationDetailCompleted": { "description": "Hero header label on verification detail screen" },
+
+  "verificationDetailUser": "Usuario",
+  "@verificationDetailUser": { "description": "Fallback name shown when no subject name/email is available" },
+
+  "verificationDetailRequestSent": "Solicitud enviada",
+  "@verificationDetailRequestSent": { "description": "Row label for request sent date on verification detail screen" },
+
+  "verificationDetailVerifiedOn": "Verificado el",
+  "@verificationDetailVerifiedOn": { "description": "Row label for verification date on verification detail screen" },
+
+  "verificationDetailIdType": "Tipo de ID",
+  "@verificationDetailIdType": { "description": "Row label for ID type on verification detail screen" },
+
+  "verificationDetailBiometricScore": "Puntuación biométrica",
+  "@verificationDetailBiometricScore": { "description": "Section title for biometric score on verification detail screen" },
+
+  "verificationDetailVerifySelfie": "Selfie de verificación",
+  "@verificationDetailVerifySelfie": { "description": "Section title for liveness snapshot on verification detail screen" },
+
+  "verificationDetailIdPresented": "Identificación presentada",
+  "@verificationDetailIdPresented": { "description": "Section title for ID photo on verification detail screen" },
+
+  "verificationDetailSelfieLabel": "Foto de registro",
+  "@verificationDetailSelfieLabel": { "description": "Photo viewer title for selfie in hero header" },
+
+  "verificationDetailScoreUnavailable": "No disponible",
+  "@verificationDetailScoreUnavailable": { "description": "Score unavailable title on verification detail screen" },
+
+  "verificationDetailScoreUnavailableDesc": "El match FaceTec no generó puntuación en esta sesión (modo desarrollo o SDK no configurado).",
+  "@verificationDetailScoreUnavailableDesc": { "description": "Score unavailable description on verification detail screen" },
+
+  "verificationDetailScoreCaption": "Match cara vs. ID presentado",
+  "@verificationDetailScoreCaption": { "description": "Caption under the score bar on verification detail screen" },
+
+  "scoreExcellent": "Excelente",
+  "@scoreExcellent": { "description": "Score label for 90+ match on verification detail screen" },
+
+  "scoreVeryHigh": "Muy alto",
+  "@scoreVeryHigh": { "description": "Score label for 75-89 match on verification detail screen" },
+
+  "scoreAcceptable": "Aceptable",
+  "@scoreAcceptable": { "description": "Score label for 60-74 match on verification detail screen" },
+
+  "scoreLow": "Bajo",
+  "@scoreLow": { "description": "Score label for 40-59 match on verification detail screen" },
+
+  "scoreInsufficient": "Insuficiente",
+  "@scoreInsufficient": { "description": "Score label for below 40 match on verification detail screen" }
+}

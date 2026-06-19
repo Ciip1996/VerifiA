@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import 'public_user_profile_screen.dart';
 
@@ -62,7 +63,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = friendlyError(e, context);
         _searching = false;
       });
     }
@@ -76,6 +77,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Column(children: [
@@ -85,7 +87,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
         child: SearchBar(
           controller: _searchCtrl,
           focusNode: _focusNode,
-          hintText: 'Buscar por nombre o correo…',
+          hintText: l10n.searchHint,
           leading: const Padding(
             padding: EdgeInsets.only(left: 4),
             child: Icon(Icons.search_rounded),
@@ -125,11 +127,11 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
         const SizedBox(height: 6),
 
       // ── Body ─────────────────────────────────────────────────────────────
-      Expanded(child: _buildBody(cs)),
+      Expanded(child: _buildBody(cs, l10n)),
     ]);
   }
 
-  Widget _buildBody(ColorScheme cs) {
+  Widget _buildBody(ColorScheme cs, AppLocalizations l10n) {
     final query = _searchCtrl.text.trim();
 
     // Empty state — no query yet
@@ -141,13 +143,13 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
             Icon(Icons.person_search_rounded, size: 64, color: cs.onSurfaceVariant.withAlpha(100)),
             const SizedBox(height: 16),
             Text(
-              'Busca usuarios de VerifiA',
+              l10n.searchTitle,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Escribe al menos 2 caracteres para buscar por nombre o correo electrónico.',
+              l10n.searchDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -168,7 +170,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
             const SizedBox(height: 16),
             FilledButton.tonal(
               onPressed: () => _search(query),
-              child: const Text('Reintentar'),
+              child: Text(l10n.retry),
             ),
           ]),
         ),
@@ -184,13 +186,13 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
             Icon(Icons.search_off_rounded, size: 48, color: cs.onSurfaceVariant.withAlpha(128)),
             const SizedBox(height: 12),
             Text(
-              'Sin resultados para "$query"',
+              l10n.searchNoResults(query),
               style: Theme.of(context).textTheme.titleSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
-              'Intenta con otro nombre o correo.',
+              l10n.searchNoResultsDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -220,6 +222,7 @@ class _UserResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final hasPhoto = user.profilePhoto != null && user.profilePhoto!.isNotEmpty;
     final initials = _initials(user.fullName);
@@ -276,7 +279,7 @@ class _UserResultCard extends StatelessWidget {
                         color: cs.primaryContainer,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text('Tú', style: TextStyle(fontSize: 10, color: cs.onPrimaryContainer, fontWeight: FontWeight.bold)),
+                      child: Text(l10n.searchYou, style: TextStyle(fontSize: 10, color: cs.onPrimaryContainer, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ]),
@@ -300,7 +303,7 @@ class _UserResultCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    user.idType == 'INE' ? 'INE' : 'Pasaporte',
+                    user.idType == 'INE' ? l10n.idTypeINE : l10n.idTypePassport,
                     style: TextStyle(fontSize: 10, color: cs.onSecondaryContainer, fontWeight: FontWeight.w600),
                   ),
                 ),

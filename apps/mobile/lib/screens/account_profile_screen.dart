@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
 
@@ -26,22 +27,23 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   void _retry() => setState(() => _profileFuture = ApiService().fetchMe());
 
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Seguro que quieres cerrar sesión?'),
+        title: Text(l10n.profileLogoutTitle),
+        content: Text(l10n.profileLogoutContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Cerrar sesión'),
+            child: Text(l10n.profileLogoutButton),
           ),
         ],
       ),
@@ -61,9 +63,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.profileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: cs.surface,
+        surfaceTintColor: cs.surfaceTint,
+      ),
       body: FutureBuilder<AccountProfile>(
         future: _profileFuture,
         builder: (context, snap) {
@@ -71,15 +79,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return _buildError(cs, snap.error.toString());
+            return _buildError(cs, snap.error.toString(), l10n);
           }
-          return _buildProfile(cs, snap.data!);
+          return _buildProfile(cs, snap.data!, l10n);
         },
       ),
     );
   }
 
-  Widget _buildError(ColorScheme cs, String message) {
+  Widget _buildError(ColorScheme cs, String message, AppLocalizations l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -87,7 +95,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           Icon(Icons.cloud_off_rounded, size: 56, color: cs.error),
           const SizedBox(height: 16),
           Text(
-            'No se pudo cargar el perfil',
+            l10n.profileLoadError,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cs.onSurface),
             textAlign: TextAlign.center,
           ),
@@ -101,158 +109,166 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           FilledButton.icon(
             onPressed: _retry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reintentar'),
+            label: Text(l10n.retry),
           ),
         ]),
       ),
     );
   }
 
-  Widget _buildProfile(ColorScheme cs, AccountProfile profile) {
+  Widget _buildProfile(ColorScheme cs, AccountProfile profile, AppLocalizations l10n) {
     final hasPhoto = profile.profilePhoto != null && profile.profilePhoto!.isNotEmpty;
     final initials = _initials(profile.fullName ?? profile.email);
     final isVerified = profile.idType != null;
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 220,
-          pinned: true,
-          backgroundColor: cs.surface,
-          surfaceTintColor: cs.surfaceTint,
-          leading: BackButton(color: cs.onSurface),
-          title: const Text('Mi Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
-          flexibleSpace: FlexibleSpaceBar(
-            collapseMode: CollapseMode.pin,
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cs.primaryContainer.withAlpha(128),
-                    cs.surface,
-                  ],
-                ),
-              ),
+    return SafeArea(
+      child: Column(
+        children: [
+          // Static header — does NOT scroll
+          _buildProfileHeader(cs, profile, hasPhoto, initials, isVerified, l10n),
+
+          // Scrollable content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundColor: cs.primaryContainer,
-                    backgroundImage: hasPhoto
-                        ? MemoryImage(base64Decode(profile.profilePhoto!))
-                        : null,
-                    child: hasPhoto
-                        ? null
-                        : Text(
-                            initials,
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: cs.onPrimaryContainer,
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Name
-                  Text(
-                    profile.fullName ?? profile.email.split('@').first,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: cs.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  // Verified badge
-                  if (isVerified)
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.verified_rounded, size: 14, color: cs.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Identidad verificada',
-                        style: TextStyle(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w500),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Column(children: [
+                      _infoTile(
+                        icon: Icons.email_outlined,
+                        label: l10n.profileEmailLabel,
+                        value: profile.email,
+                        cs: cs,
+                        isFirst: true,
                       ),
+                      if (profile.idType != null) ...[
+                        const Divider(height: 1, indent: 56),
+                        _infoTile(
+                          icon: Icons.credit_card_rounded,
+                          label: l10n.profileIdTypeLabel,
+                          value: profile.idType == 'INE' ? l10n.idTypeINE : l10n.idTypePassport,
+                          cs: cs,
+                        ),
+                      ],
+                      if (profile.curp != null && profile.curp!.isNotEmpty) ...[
+                        const Divider(height: 1, indent: 56),
+                        _infoTile(
+                          icon: Icons.fingerprint_rounded,
+                          label: l10n.profileCurpLabel,
+                          value: profile.curp!,
+                          monospace: true,
+                          cs: cs,
+                        ),
+                      ],
+                      if (profile.dateOfBirth != null && profile.dateOfBirth!.isNotEmpty) ...[
+                        const Divider(height: 1, indent: 56),
+                        _infoTile(
+                          icon: Icons.cake_outlined,
+                          label: l10n.profileBirthDateLabel,
+                          value: profile.dateOfBirth!,
+                          cs: cs,
+                          isLast: true,
+                        ),
+                      ],
                     ]),
-                  const SizedBox(height: 16),
+                  ),
                 ],
               ),
             ),
           ),
+
+          // Static logout button at bottom
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: _buildLogoutButton(cs, l10n),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(
+    ColorScheme cs,
+    AccountProfile profile,
+    bool hasPhoto,
+    String initials,
+    bool isVerified,
+    AppLocalizations l10n,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            cs.primaryContainer.withAlpha(128),
+            cs.surface,
+          ],
         ),
-
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Info card
-              Card(
-                margin: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Column(children: [
-                  _infoTile(
-                    icon: Icons.email_outlined,
-                    label: 'Correo electrónico',
-                    value: profile.email,
-                    cs: cs,
-                    isFirst: true,
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 48,
+            backgroundColor: cs.primaryContainer,
+            backgroundImage: hasPhoto
+                ? MemoryImage(base64Decode(profile.profilePhoto!))
+                : null,
+            child: hasPhoto
+                ? null
+                : Text(
+                    initials,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onPrimaryContainer,
+                    ),
                   ),
-                  if (profile.idType != null) ...[
-                    const Divider(height: 1, indent: 56),
-                    _infoTile(
-                      icon: Icons.credit_card_rounded,
-                      label: 'Tipo de ID',
-                      value: profile.idType == 'INE' ? 'INE / IFE' : 'Pasaporte',
-                      cs: cs,
-                    ),
-                  ],
-                  if (profile.curp != null && profile.curp!.isNotEmpty) ...[
-                    const Divider(height: 1, indent: 56),
-                    _infoTile(
-                      icon: Icons.fingerprint_rounded,
-                      label: 'CURP',
-                      value: profile.curp!,
-                      monospace: true,
-                      cs: cs,
-                    ),
-                  ],
-                  if (profile.dateOfBirth != null && profile.dateOfBirth!.isNotEmpty) ...[
-                    const Divider(height: 1, indent: 56),
-                    _infoTile(
-                      icon: Icons.cake_outlined,
-                      label: 'Fecha de nacimiento',
-                      value: profile.dateOfBirth!,
-                      cs: cs,
-                      isLast: true,
-                    ),
-                  ],
-                ]),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Logout button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _logout,
-                  icon: Icon(Icons.logout_rounded, color: cs.error),
-                  label: Text('Cerrar sesión', style: TextStyle(color: cs.error)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: cs.error.withAlpha(128)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            profile.fullName ?? profile.email.split('@').first,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          if (isVerified)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.verified_rounded, size: 14, color: cs.primary),
+              const SizedBox(width: 4),
+              Text(
+                l10n.profileVerifiedBadge,
+                style: TextStyle(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w500),
               ),
             ]),
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(ColorScheme cs, AppLocalizations l10n) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _logout,
+        icon: Icon(Icons.logout_rounded, color: cs.error),
+        label: Text(l10n.profileLogoutButtonLabel, style: TextStyle(color: cs.error)),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(color: cs.error.withAlpha(128)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-      ],
+      ),
     );
   }
 

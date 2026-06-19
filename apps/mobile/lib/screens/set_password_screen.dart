@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
 
@@ -49,7 +50,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
       );
     } catch (e) {
       setState(() {
-        _errorMsg = e.toString().replaceFirst('Exception: ', '');
+        _errorMsg = friendlyError(e, context);
         _loading = false;
       });
     }
@@ -72,6 +73,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -88,14 +90,14 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                 Icon(Icons.lock_person_rounded, size: 52, color: cs.primary),
                 const SizedBox(height: 16),
                 Text(
-                  'Crea tu acceso web',
+                  l10n.setPasswordTitle,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Con una cuenta podrás iniciar sesión en el portal web para generar QRs de verificación y consultar tu historial.',
+                  l10n.setPasswordSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
@@ -107,15 +109,15 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
-                    hintText: 'tu@email.com',
+                    labelText: l10n.loginEmailLabel,
+                    hintText: l10n.loginEmailHint,
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                    if (v == null || v.trim().isEmpty) return l10n.loginEmailRequired;
                     final re = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-                    if (!re.hasMatch(v.trim())) return 'Correo no válido';
+                    if (!re.hasMatch(v.trim())) return l10n.loginEmailInvalid;
                     return null;
                   },
                 ),
@@ -126,8 +128,8 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   controller: _passwordCtrl,
                   obscureText: !_showPassword,
                   decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    hintText: 'Mínimo 8 caracteres',
+                    labelText: l10n.passwordLabel,
+                    hintText: l10n.setPasswordPasswordHint,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
@@ -136,7 +138,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (v) {
-                    if (v == null || v.length < 8) return 'Mínimo 8 caracteres';
+                    if (v == null || v.length < 8) return l10n.setPasswordPasswordMinLength;
                     return null;
                   },
                 ),
@@ -147,12 +149,12 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   controller: _confirmCtrl,
                   obscureText: !_showPassword,
                   decoration: InputDecoration(
-                    labelText: 'Confirmar contraseña',
+                    labelText: l10n.setPasswordConfirmLabel,
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (v) {
-                    if (v != _passwordCtrl.text) return 'Las contraseñas no coinciden';
+                    if (v != _passwordCtrl.text) return l10n.setPasswordPasswordMismatch;
                     return null;
                   },
                 ),
@@ -183,7 +185,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                             height: 20, width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Crear cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : Text(l10n.setPasswordCreateButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -192,7 +194,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: _skip,
-                    child: Text('Omitir por ahora', style: TextStyle(color: cs.onSurfaceVariant)),
+                    child: Text(l10n.setPasswordSkip, style: TextStyle(color: cs.onSurfaceVariant)),
                   ),
                 ),
               ],

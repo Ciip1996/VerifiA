@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 
 class PublicUserProfileScreen extends StatefulWidget {
@@ -32,9 +33,10 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
       await _api.createChallenge(targetEmail: targetEmail);
       if (!mounted) return;
       setState(() { _requestSent = true; _sendingRequest = false; });
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Solicitud de verificación enviada'),
+          content: Text(l10n.publicProfileRequestSentSnack),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -45,7 +47,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
       setState(() => _sendingRequest = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(friendlyError(e, context)),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -64,6 +66,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           if (snap.hasError) {
+            final l10n = AppLocalizations.of(context)!;
             return Scaffold(
               appBar: AppBar(),
               body: Center(
@@ -73,7 +76,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                     Icon(Icons.person_off_rounded, size: 56, color: Theme.of(context).colorScheme.error),
                     const SizedBox(height: 16),
                     Text(
-                      'No se pudo cargar el perfil',
+                      l10n.publicProfileLoadError,
                       style: Theme.of(context).textTheme.titleMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -95,6 +98,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
   }
 
   Widget _buildContent(BuildContext context, PublicAccountProfile profile) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final hasPhoto = profile.profilePhoto.isNotEmpty;
     final initials = _initials(profile.fullName);
@@ -158,7 +162,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                     if (age != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        '$age años',
+                        l10n.publicProfileAge(age),
                         style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
                       ),
                     ],
@@ -167,7 +171,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                       Icon(Icons.verified_rounded, size: 13, color: cs.primary),
                       const SizedBox(width: 4),
                       Text(
-                        'Identidad verificada con FaceTec',
+                        l10n.publicProfileVerifiedFacetec,
                         style: TextStyle(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w500),
                       ),
                     ]),
@@ -201,7 +205,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                     _infoTile(
                       context: context,
                       icon: Icons.email_outlined,
-                      label: 'Correo electrónico',
+                      label: l10n.profileEmailLabel,
                       value: profile.email,
                       cs: cs,
                     ),
@@ -210,8 +214,8 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                       _infoTile(
                         context: context,
                         icon: Icons.credit_card_rounded,
-                        label: 'Tipo de ID',
-                        value: profile.idType == 'INE' ? 'INE / IFE' : 'Pasaporte',
+                        label: l10n.profileIdTypeLabel,
+                        value: profile.idType == 'INE' ? l10n.idTypeINE : l10n.idTypePassport,
                         cs: cs,
                       ),
                     ],
@@ -220,7 +224,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                       _infoTile(
                         context: context,
                         icon: Icons.cake_outlined,
-                        label: 'Fecha de nacimiento',
+                        label: l10n.profileBirthDateLabel,
                         value: profile.dateOfBirth!,
                         cs: cs,
                       ),
@@ -232,7 +236,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                 // ── ID photo ────────────────────────────────────────────────
                 if (profile.idFrontPhoto.isNotEmpty) ...[
                   Text(
-                    'Identificación oficial',
+                    l10n.publicProfileIdLabel,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
@@ -247,7 +251,7 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Documento escaneado durante el registro',
+                    l10n.publicProfileIdDesc,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
@@ -280,11 +284,14 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : Icon(_requestSent ? Icons.check_circle_rounded : Icons.verified_user_rounded),
-                  label: Text(
-                    _requestSent
-                        ? 'Solicitud enviada'
-                        : 'Enviar solicitud de verificación',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  label: Builder(
+                    builder: (ctx) {
+                      final l10n = AppLocalizations.of(ctx)!;
+                      return Text(
+                        _requestSent ? l10n.publicProfileButtonSent : l10n.publicProfileButtonSend,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      );
+                    },
                   ),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -367,17 +374,18 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final Color color;
     final String label;
     if (score >= 70) {
       color = const Color(0xFF2E7D32); // green
-      label = 'Alta coincidencia';
+      label = l10n.publicProfileScoreHigh;
     } else if (score >= 40) {
       color = const Color(0xFFF57F17); // amber
-      label = 'Coincidencia media';
+      label = l10n.publicProfileScoreMedium;
     } else {
       color = cs.error;
-      label = 'Coincidencia baja';
+      label = l10n.publicProfileScoreLow;
     }
 
     return Container(
@@ -412,7 +420,7 @@ class _ScoreCard extends StatelessWidget {
               Icon(Icons.shield_rounded, size: 16, color: color),
               const SizedBox(width: 6),
               Text(
-                'FaceTec ID Match',
+                l10n.publicProfileFacetecTitle,
                 style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13),
               ),
             ]),
@@ -423,7 +431,7 @@ class _ScoreCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              'Score de coincidencia cara vs. ID al registrarse',
+              l10n.publicProfileFacetecDesc,
               style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ]),

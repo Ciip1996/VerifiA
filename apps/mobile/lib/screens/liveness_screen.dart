@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/facetec_service.dart';
 
 /// Real liveness screen using the device's front camera + Google ML Kit.
@@ -66,6 +67,9 @@ class _LivenessScreenState extends State<LivenessScreen>
   // ─── Animations ────────────────────────────────────────────────────────────
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulse;
+
+  // ─── Cached l10n (updated in build so async methods can use it) ───────────
+  AppLocalizations? _l10n;
 
   // ─── Fallback ──────────────────────────────────────────────────────────────
   bool _fallbackMode = false;
@@ -312,13 +316,14 @@ class _LivenessScreenState extends State<LivenessScreen>
     }
   }
 
-  /// Returns a Spanish rejection reason if the photo fails quality, or null if OK.
+  /// Returns a rejection reason if the photo fails quality, or null if OK.
   Future<String?> _checkPhotoQuality(String imagePath) async {
+    final l10n = _l10n;
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
       final faces = await _detector.processImage(inputImage);
 
-      if (faces.isEmpty) return 'No se detectó rostro — acércate un poco';
+      if (faces.isEmpty) return l10n?.livenessQualityNoFace ?? 'No se detectó rostro — acércate un poco';
 
       final face = faces.first;
 
@@ -326,14 +331,14 @@ class _LivenessScreenState extends State<LivenessScreen>
       final leftEye  = face.leftEyeOpenProbability  ?? 1.0;
       final rightEye = face.rightEyeOpenProbability ?? 1.0;
       if (leftEye < 0.6 || rightEye < 0.6) {
-        return 'Abre los ojos para la foto';
+        return l10n?.livenessQualityEyesClosed ?? 'Abre los ojos para la foto';
       }
 
       // Head orientation: not too turned / tilted
       final yaw   = face.headEulerAngleY ?? 0;
       final pitch = face.headEulerAngleX ?? 0;
-      if (yaw.abs() > 22) return 'Mira de frente a la cámara';
-      if (pitch.abs() > 20) return 'Endereza la cabeza';
+      if (yaw.abs() > 22) return l10n?.livenessQualityFaceAngle ?? 'Mira de frente a la cámara';
+      if (pitch.abs() > 20) return l10n?.livenessQualityTilted ?? 'Endereza la cabeza';
 
       return null; // all good
     } catch (e) {
@@ -379,16 +384,17 @@ class _LivenessScreenState extends State<LivenessScreen>
       _isDone ? const Color(0xFF22C55E) : const Color(0xFF6C63FF);
 
   String get _instruction {
-    if (_fallbackMode) return 'Verificando presencia...';
+    final l10n = _l10n;
+    if (_fallbackMode) return l10n?.livenessInstructionFallback ?? 'Verificando presencia...';
     if (_photoRejectionReason != null) return _photoRejectionReason!;
-    if (_countdown == 'ready') return '¡Prepárate para la foto!';
+    if (_countdown == 'ready') return l10n?.livenessCountdownReady ?? '¡Prepárate para la foto!';
     if (_countdown is int && (_countdown as int) > 0) return '';
-    if (_countdown == 0) return '¡Foto!';
+    if (_countdown == 0) return l10n?.livenessCountdownShoot ?? '¡Foto!';
     return switch (_stage) {
-      _Stage.center       => 'Centra tu cara en el óvalo',
-      _Stage.turn         => 'Gira la cabeza a un lado',
-      _Stage.returnCenter => 'Regresa al centro',
-      _Stage.done         => '¡Verificación completada!',
+      _Stage.center       => l10n?.livenessInstructionCenter ?? 'Centra tu cara en el óvalo',
+      _Stage.turn         => l10n?.livenessInstructionTurn ?? 'Gira la cabeza a un lado',
+      _Stage.returnCenter => l10n?.livenessInstructionReturn ?? 'Regresa al centro',
+      _Stage.done         => l10n?.livenessInstructionDone ?? '¡Verificación completada!',
     };
   }
 
@@ -412,6 +418,7 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   @override
   Widget build(BuildContext context) {
+    _l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -475,8 +482,8 @@ class _LivenessScreenState extends State<LivenessScreen>
                   ),
                   child: FadeTransition(opacity: anim, child: child),
                 ),
-                child: Text(
-                  '${_countdown}',
+                  child: Text(
+                  '$_countdown',
                   key: ValueKey(_countdown),
                   style: const TextStyle(
                     fontSize: 120,
@@ -554,9 +561,9 @@ class _LivenessScreenState extends State<LivenessScreen>
             ],
           ),
         ),
-        const Text(
-          'Verificación de Presencia',
-          style: TextStyle(
+        Text(
+          _l10n?.livenessTitle ?? 'Verificación de Presencia',
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 17,
             fontWeight: FontWeight.bold,

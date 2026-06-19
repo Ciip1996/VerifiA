@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../l10n/app_localizations.dart';
 import '../services/facetec_service.dart';
 
 /// Liveness verification mock screen.
@@ -27,14 +28,7 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
 
   int _instructionIndex = 0;
   bool _completed = false;
-
-  static const _instructions = [
-    'Mantén el teléfono frente a tu cara',
-    'Gira lentamente hacia la derecha',
-    'Regresa al centro',
-    'Gira lentamente hacia la izquierda',
-    'Mira directamente a la cámara',
-  ];
+  List<String>? _instructions;
 
   static const _totalDurationMs = 3500;
 
@@ -70,10 +64,12 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
   }
 
   void _onProgress() {
+    final instructions = _instructions;
+    if (instructions == null) return;
     final newIndex =
-        (_progressController.value * _instructions.length).floor().clamp(
+        (_progressController.value * instructions.length).floor().clamp(
               0,
-              _instructions.length - 1,
+              instructions.length - 1,
             );
     if (newIndex != _instructionIndex && mounted) {
       setState(() => _instructionIndex = newIndex);
@@ -109,6 +105,14 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    _instructions ??= [
+      l10n.livenessMockInstruction1,
+      l10n.livenessMockInstruction2,
+      l10n.livenessMockInstruction3,
+      l10n.livenessMockInstruction4,
+      l10n.livenessMockInstruction5,
+    ];
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -131,10 +135,10 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
             right: 0,
             child: Column(
               children: [
-                const Text(
-                  'Verificación de Presencia',
+                Text(
+                  l10n.livenessTitle,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -233,8 +237,8 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
               ),
               child: Text(
                 _completed
-                    ? '¡Verificación completada!'
-                    : _instructions[_instructionIndex],
+                    ? l10n.livenessInstructionDone
+                    : (_instructions?[_instructionIndex] ?? ''),
                 key: ValueKey(_completed ? 'done' : _instructionIndex),
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -271,7 +275,7 @@ class _LivenessMockScreenState extends State<LivenessMockScreen>
                   const SizedBox(height: 8),
                   Text(
                     _completed
-                        ? 'Completado'
+                        ? l10n.livenessMockCompleted
                         : '${(_progressController.value * 100).toInt()}%',
                     style: const TextStyle(
                       color: Colors.white54,

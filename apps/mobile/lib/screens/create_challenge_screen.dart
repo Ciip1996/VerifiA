@@ -8,8 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/feedback_service.dart';
+import '../services/sent_challenges_service.dart';
+import 'verification_detail_screen.dart';
 
 enum _SendMode { open, targeted }
 
@@ -56,18 +59,41 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   bool _sendingInvite = false;
   bool _inviteSent = false;
 
+  // Verification completed
+  bool _verified = false;
+  SentChallenge? _verifiedChallenge;
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _emailCtrl.addListener(_onEmailChanged);
+    SentChallengesService.instance.addListener(_onSentUpdate);
   }
 
   @override
   void dispose() {
     _emailCtrl.dispose();
+    SentChallengesService.instance.removeListener(_onSentUpdate);
     super.dispose();
+  }
+
+  void _onSentUpdate() {
+    if (!mounted || _challenge == null || _verified) return;
+    final nonce = _challenge!['nonce'] as String?;
+    if (nonce == null) return;
+    final completed = SentChallengesService.instance.items
+        .where((c) => c.nonce == nonce && c.status == 'USED')
+        .firstOrNull;
+    if (completed != null) {
+      setState(() {
+        _verified = true;
+        _verifiedChallenge = completed;
+        _timerActive = false;
+      });
+      FeedbackService.success();
+    }
   }
 
   // ── Timer ──────────────────────────────────────────────────────────────────
@@ -149,6 +175,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   // ── Challenge generation ───────────────────────────────────────────────────
 
   Future<void> _generate() async {
+    final l10n = AppLocalizations.of(context)!;
     final targetEmail = _mode == _SendMode.targeted ? _emailCtrl.text.trim() : null;
 
     // Resolve registered status from suggestions if still unknown
@@ -183,15 +210,15 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
       if (mounted && _mode == _SendMode.targeted && targetEmail != null && targetEmail.isNotEmpty) {
         final msg = _targetIsRegistered == true
-            ? 'Solicitud enviada a $targetEmail'
-            : 'QR generado — envía la invitación a $targetEmail';
+            ? l10n.createChallengeSnackSent(targetEmail)
+            : l10n.createChallengeSnackQrGenerated(targetEmail);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), duration: const Duration(seconds: 3)),
         );
       }
     } catch (e) {
       setState(() {
-        _errorMsg = friendlyError(e);
+        _errorMsg = friendlyError(e, context);
         _loading = false;
       });
     }
@@ -200,6 +227,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   // ── Share ──────────────────────────────────────────────────────────────────
 
   Future<void> _share() async {
+    final l10n = AppLocalizations.of(context)!;
     final qrData = _challenge?['qr_data'] as String?;
     // Prefer the HTTPS redirect URL (clickable in WhatsApp/iMessage); fall back to deep link
     final shareUrl = (_challenge?['redirect_url'] as String?)?.isNotEmpty == true
@@ -261,7 +289,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo compartir: $e')),
+          SnackBar(content: Text(l10n.createChallengeShareError(e.toString()))),
         );
       }
     } finally {
@@ -292,6 +320,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   // ── Invite (Resend) ────────────────────────────────────────────────────────
 
   Future<void> _sendInvite() async {
+    final l10n = AppLocalizations.of(context)!;
     final email = _emailCtrl.text.trim();
     final nonce = _challenge?['nonce'] as String?;
     if (email.isEmpty || nonce == null) return;
@@ -304,19 +333,20 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       if (mounted) {
         setState(() => _sendingInvite = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al enviar: ${friendlyError(e)}')),
+          SnackBar(content: Text(l10n.createChallengeInviteError(friendlyError(e, context)))),
         );
       }
     }
   }
 
   void _copyLink() {
+    final l10n = AppLocalizations.of(context)!;
     final link = (_challenge?['redirect_url'] as String?)?.isNotEmpty == true
         ? _challenge!['redirect_url'] as String
         : _challenge?['deep_link'] as String? ?? '';
     Clipboard.setData(ClipboardData(text: link));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link copiado al portapapeles'), duration: Duration(seconds: 2)),
+      SnackBar(content: Text(l10n.createChallengeLinkCopied), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -335,24 +365,29 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
-        title: const Text('Solicitar verificación'),
+        title: Text(l10n.createChallengeTitle),
         backgroundColor: cs.surface,
         elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        child: _challenge == null ? _buildForm(cs) : _buildQRView(cs),
+        child: _challenge == null
+            ? _buildForm(cs, l10n)
+            : _verified
+                ? _buildVerifiedView(cs, l10n)
+                : _buildQRView(cs, l10n),
       ),
     );
   }
 
   // ── Form (pre-generation) ──────────────────────────────────────────────────
 
-  Widget _buildForm(ColorScheme cs) {
+  Widget _buildForm(ColorScheme cs, AppLocalizations l10n) {
     final isTargeted = _mode == _SendMode.targeted;
     final email = _emailCtrl.text.trim();
     final hasEmail = email.isNotEmpty;
@@ -366,15 +401,15 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     // Button label
     final String buttonLabel;
     if (!isTargeted) {
-      buttonLabel = 'Generar QR';
+      buttonLabel = l10n.createChallengeButtonGenerate;
     } else if (!hasEmail) {
-      buttonLabel = 'Ingresa un correo para continuar';
+      buttonLabel = l10n.createChallengeButtonNoEmail;
     } else if (!emailValid) {
-      buttonLabel = 'Correo inválido';
+      buttonLabel = l10n.createChallengeButtonInvalidEmail;
     } else if (isRegistered) {
-      buttonLabel = 'Enviar solicitud';
+      buttonLabel = l10n.createChallengeButtonSend;
     } else {
-      buttonLabel = 'Generar y preparar invitación';
+      buttonLabel = l10n.createChallengeButtonGenerateInvite;
     }
 
     return Column(
@@ -382,7 +417,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       children: [
         const SizedBox(height: 4),
         Text(
-          '¿Cómo quieres enviar la solicitud?',
+          l10n.createChallengeModeQuestion,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -395,8 +430,8 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
           Expanded(
             child: _ModeCard(
               icon: Icons.qr_code_2_rounded,
-              title: 'QR Abierto',
-              description: 'Comparte el QR o el link con cualquier app',
+              title: l10n.createChallengeModeOpen,
+              description: l10n.createChallengeModeOpenDesc,
               selected: _mode == _SendMode.open,
               onTap: () => _setMode(_SendMode.open),
             ),
@@ -405,8 +440,8 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
           Expanded(
             child: _ModeCard(
               icon: Icons.send_rounded,
-              title: 'Enviar a usuario',
-              description: 'Directo a alguien, por app o correo',
+              title: l10n.createChallengeModeTargeted,
+              description: l10n.createChallengeModeTargetedDesc,
               selected: _mode == _SendMode.targeted,
               onTap: () => _setMode(_SendMode.targeted),
             ),
@@ -427,8 +462,8 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       decoration: InputDecoration(
-                        labelText: 'Correo del destinatario',
-                        hintText: 'nombre@ejemplo.com',
+                        labelText: l10n.createChallengeEmailLabel,
+                        hintText: l10n.createChallengeEmailHint,
                         prefixIcon: const Icon(Icons.alternate_email_rounded),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                         suffixIcon: hasEmail && _targetIsRegistered != null
@@ -455,6 +490,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                       _StatusBadge(
                         isRegistered: isRegistered,
                         email: email,
+                        l10n: l10n,
                       ),
                     ],
                   ],
@@ -489,7 +525,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.qr_code_2_rounded),
-            label: Text(_loading ? 'Generando…' : buttonLabel, textAlign: TextAlign.center),
+            label: Text(_loading ? l10n.createChallengeGenerating : buttonLabel, textAlign: TextAlign.center),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -502,15 +538,15 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         Text(
           isTargeted
               ? !hasEmail
-                  ? 'El correo del destinatario es obligatorio.'
+                  ? l10n.createChallengeHintEmailRequired
                   : !emailValid
-                      ? 'Ingresa un correo con formato válido (ej. nombre@ejemplo.com).'
+                      ? l10n.createChallengeHintEmailFormat
                       : isRegistered
-                          ? 'La solicitud aparecerá en la app del destinatario.'
+                          ? l10n.createChallengeHintRegistered
                           : isUnregistered
-                              ? 'Después de generar, podrás enviarle una invitación por correo.'
-                              : 'Si el correo no está en VerifiA, le enviaremos una invitación.'
-              : 'El QR estará activo 30 minutos. Compártelo por WhatsApp, iMessage o cualquier app.',
+                              ? l10n.createChallengeHintUnregistered
+                              : l10n.createChallengeHintUnknown
+              : l10n.createChallengeHintOpen,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -522,7 +558,121 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
   // ── QR display (post-generation) ───────────────────────────────────────────
 
-  Widget _buildQRView(ColorScheme cs) {
+  // ── Verified state (shown once the challenge is consumed) ──────────────────
+
+  Widget _buildVerifiedView(ColorScheme cs, AppLocalizations l10n) {
+    final c = _verifiedChallenge;
+    final hasPhoto = c?.subjectPhoto != null && c!.subjectPhoto!.isNotEmpty;
+    final name = c?.subjectFullName ?? c?.targetEmail ?? l10n.sentRecipient;
+
+    return Center(
+      child: Column(children: [
+        const SizedBox(height: 32),
+
+        // Big animated checkmark
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withAlpha(20),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFF2E7D32),
+            size: 72,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        Text(
+          l10n.sentStatusUsed,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF2E7D32),
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.createChallengeVerifiedSubtitle,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 28),
+
+        // Subject avatar + name
+        if (c != null) ...[
+          CircleAvatar(
+            radius: 34,
+            backgroundColor: cs.primaryContainer,
+            backgroundImage: hasPhoto
+                ? MemoryImage(base64Decode(c.subjectPhoto!))
+                : null,
+            child: hasPhoto
+                ? null
+                : Text(
+                    name.substring(0, 1).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onPrimaryContainer,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            name,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 28),
+
+          // View detail button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: Text(l10n.seeAction),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => VerificationDetailScreen(challenge: c),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // New challenge button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.qr_code_rounded),
+            label: Text(l10n.createChallengeNewQr),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: () => setState(() {
+              _challenge = null;
+              _verified = false;
+              _verifiedChallenge = null;
+            }),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── QR view (while challenge is active) ────────────────────────────────────
+
+  Widget _buildQRView(ColorScheme cs, AppLocalizations l10n) {
     final isExpired = _timeLeft <= 0;
     final targetEmail = _mode == _SendMode.targeted ? _emailCtrl.text.trim() : null;
     final showInviteButton = !isExpired
@@ -535,20 +685,20 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     final String title;
     final String subtitle;
     if (isExpired) {
-      title = 'QR expirado';
-      subtitle = 'Genera uno nuevo para continuar';
+      title = l10n.createChallengeQrExpired;
+      subtitle = l10n.createChallengeQrExpiredSubtitle;
     } else if (_mode == _SendMode.open) {
-      title = 'QR listo para compartir';
-      subtitle = 'Comparte el código o el link por cualquier app';
+      title = l10n.createChallengeQrReady;
+      subtitle = l10n.createChallengeQrReadySubtitle;
     } else if (_targetIsRegistered == true && targetEmail != null) {
-      title = 'Solicitud enviada';
-      subtitle = 'La solicitud está en la app de $targetEmail';
+      title = l10n.createChallengeQrSent;
+      subtitle = l10n.createChallengeQrSentSubtitle(targetEmail);
     } else if (_targetIsRegistered == false && targetEmail != null) {
-      title = 'QR generado';
-      subtitle = 'Envía la invitación por correo para que descargue la app';
+      title = l10n.createChallengeQrGenerated;
+      subtitle = l10n.createChallengeQrGeneratedSubtitle;
     } else {
-      title = 'QR listo';
-      subtitle = 'Comparte el código o el link';
+      title = l10n.createChallengeQrReadyShort;
+      subtitle = l10n.createChallengeQrReadyShortSubtitle;
     }
 
     return Center(
@@ -572,7 +722,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         const SizedBox(height: 20),
 
         // Countdown ring
-        _CountdownRing(timeLeft: _timeLeft, total: _timerTotal),
+        _CountdownRing(timeLeft: _timeLeft, total: _timerTotal, l10n: l10n),
         const SizedBox(height: 20),
 
         // QR code
@@ -603,7 +753,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
             FilledButton.tonalIcon(
               onPressed: _copyLink,
               icon: const Icon(Icons.copy_rounded, size: 18),
-              label: const Text('Copiar link'),
+              label: Text(l10n.createChallengeCopyLink),
             ),
             const SizedBox(width: 12),
             FilledButton.icon(
@@ -616,7 +766,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.ios_share_rounded, size: 18),
-              label: const Text('Compartir'),
+              label: Text(l10n.createChallengeShare),
             ),
           ]),
 
@@ -626,12 +776,12 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
             SizedBox(
               width: double.infinity,
               child: _inviteSent
-                  ? const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 18),
-                      SizedBox(width: 8),
+                  ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 18),
+                      const SizedBox(width: 8),
                       Text(
-                        'Invitación enviada',
-                        style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
+                        l10n.createChallengeInviteSent,
+                        style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
                       ),
                     ])
                   : OutlinedButton.icon(
@@ -643,7 +793,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
                             )
                           : const Icon(Icons.mark_email_unread_outlined, size: 18),
-                      label: Text(_sendingInvite ? 'Enviando…' : 'Enviar invitación por correo'),
+                      label: Text(_sendingInvite ? l10n.createChallengeInviteSending : l10n.createChallengeInviteButton),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -656,7 +806,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         const SizedBox(height: 20),
         TextButton(
           onPressed: _reset,
-          child: Text(isExpired ? 'Generar nuevo QR' : 'Cancelar y volver'),
+          child: Text(isExpired ? l10n.createChallengeNewQr : l10n.createChallengeCancelAndBack),
         ),
       ]),
     );
@@ -807,18 +957,19 @@ class _SuggestionsDropdown extends StatelessWidget {
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.isRegistered, required this.email});
+  const _StatusBadge({required this.isRegistered, required this.email, required this.l10n});
 
   final bool isRegistered;
   final String email;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final color = isRegistered ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
     final icon = isRegistered ? Icons.check_circle_rounded : Icons.info_outline_rounded;
     final label = isRegistered
-        ? 'Usuario registrado — recibirá la solicitud en la app'
-        : 'No está en VerifiA — podrás enviarle una invitación por correo';
+        ? l10n.createChallengeStatusRegistered
+        : l10n.createChallengeStatusNotRegistered;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -842,10 +993,11 @@ class _StatusBadge extends StatelessWidget {
 // ── Countdown ring ────────────────────────────────────────────────────────────
 
 class _CountdownRing extends StatelessWidget {
-  const _CountdownRing({required this.timeLeft, required this.total});
+  const _CountdownRing({required this.timeLeft, required this.total, required this.l10n});
 
   final int timeLeft;
   final int total;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -891,7 +1043,7 @@ class _CountdownRing extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'restantes',
+                      l10n.createChallengeCountdownLabel,
                       style: TextStyle(fontSize: 8, color: color.withAlpha(180)),
                     ),
                   ]),

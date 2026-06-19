@@ -218,6 +218,12 @@ class FaceTecChannel: NSObject {
         custom.securityWatermarkImage = .faceTec
         custom.cancelButtonCustomization.location = .topLeft
 
+        let bundle = Bundle.main
+        if let path = bundle.path(forResource: "flutter_assets/assets/images/logo_light", ofType: "png"),
+           let logoImage = UIImage(contentsOfFile: path) {
+            custom.overlayCustomization.brandingImage = logoImage
+        }
+
         return custom
     }
 }

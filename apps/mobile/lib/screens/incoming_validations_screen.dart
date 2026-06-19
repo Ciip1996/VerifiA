@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
@@ -16,17 +17,18 @@ class IncomingValidationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DefaultTabController(
+    final l10n = AppLocalizations.of(context)!;
+    return DefaultTabController(
       length: 2,
       child: Column(children: [
         TabBar(
           tabs: [
-            Tab(text: 'Recibidas'),
-            Tab(text: 'Enviadas'),
+            Tab(text: l10n.inboxTabReceived),
+            Tab(text: l10n.inboxTabSent),
           ],
-          labelStyle: TextStyle(fontWeight: FontWeight.w600),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        Expanded(
+        const Expanded(
           child: TabBarView(children: [
             _ReceivedTab(),
             _SentTab(),
@@ -80,19 +82,20 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
   }
 
   Future<void> _reject(IncomingChallenge c) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Rechazar solicitud?'),
+        title: Text(l10n.inboxRejectTitle),
         content: Text(
-          'Se notificará a ${c.requesterFullName ?? c.requesterEmail ?? "el solicitante"} que rechazaste la verificación.',
+          l10n.inboxRejectContent(c.requesterFullName ?? c.requesterEmail ?? l10n.bannerAnonymous),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
-            child: const Text('Rechazar'),
+            child: Text(l10n.inboxRejectButton),
           ),
         ],
       ),
@@ -103,13 +106,13 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
       _inbox.removeItem(c.nonce);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Solicitud rechazada'), duration: Duration(seconds: 2)),
+          SnackBar(content: Text(l10n.inboxRejectedSnack), duration: const Duration(seconds: 2)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyError(e))),
+          SnackBar(content: Text(friendlyError(e, context))),
         );
       }
     }
@@ -118,6 +121,7 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final items = _inbox.items;
 
@@ -132,10 +136,10 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.mark_email_unread_outlined, size: 56, color: cs.onSurfaceVariant.withAlpha(128)),
             const SizedBox(height: 16),
-            Text('Sin solicitudes recibidas', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(l10n.inboxEmptyReceived, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 8),
             Text(
-              'Cuando alguien te solicite verificar tu identidad, aparecerá aquí.',
+              l10n.inboxEmptyReceivedDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -162,7 +166,6 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
       ),
     );
   }
-
 }
 
 // ─── Received card with live countdown progress bar ───────────────────────────
@@ -225,6 +228,7 @@ class _ReceivedCardState extends State<_ReceivedCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final c = widget.challenge;
     final isExpired = _remaining.inSeconds <= 0;
@@ -245,11 +249,11 @@ class _ReceivedCardState extends State<_ReceivedCard> {
     // Time label
     final String timeLabel;
     if (isExpired) {
-      timeLabel = 'No verificada a tiempo — caducada';
+      timeLabel = l10n.inboxTimeExpired;
     } else if (_remaining.inHours >= 1) {
-      timeLabel = '${_remaining.inHours}h ${_remaining.inMinutes.remainder(60)}m restantes';
+      timeLabel = l10n.inboxTimeHoursMinutes(_remaining.inHours, _remaining.inMinutes.remainder(60));
     } else {
-      timeLabel = '${_remaining.inMinutes}m restantes';
+      timeLabel = l10n.inboxTimeMinutes(_remaining.inMinutes);
     }
 
     // Avatar helper
@@ -296,7 +300,7 @@ class _ReceivedCardState extends State<_ReceivedCard> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(
-                      c.requesterFullName ?? c.requesterEmail ?? 'Solicitud anónima',
+                      c.requesterFullName ?? c.requesterEmail ?? l10n.inboxAnonymousRequest,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -334,7 +338,7 @@ class _ReceivedCardState extends State<_ReceivedCard> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      'Caducada',
+                      l10n.inboxExpiredLabel,
                       style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
                     ),
                   )
@@ -348,7 +352,7 @@ class _ReceivedCardState extends State<_ReceivedCard> {
                         minimumSize: const Size(90, 36),
                       ),
                       child: Text(
-                        widget.isInProgress ? 'Retomar' : 'Verificar',
+                        widget.isInProgress ? l10n.inboxResumeButton : l10n.inboxVerifyButton,
                         style: const TextStyle(fontSize: 13),
                       ),
                     ),
@@ -362,7 +366,7 @@ class _ReceivedCardState extends State<_ReceivedCard> {
                         side: const BorderSide(color: Color(0xFFC62828)),
                         minimumSize: const Size(90, 36),
                       ),
-                      child: const Text('Rechazar', style: TextStyle(fontSize: 13)),
+                      child: Text(l10n.inboxRejectButton, style: const TextStyle(fontSize: 13)),
                     ),
                   ]),
               ]),
@@ -406,12 +410,16 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
     _sentService.addListener(_onServiceUpdate);
     // If the service already has data, use it immediately
     if (_sentService.items.isNotEmpty) {
-      _items = _sentService.items.where((c) => c.targetEmail != null).toList();
+      _items = _sentService.items.where(_shouldShow).toList();
       _loading = false;
     } else {
       _load();
     }
   }
+
+  // Show targeted challenges always; show open (no email) ones only when completed.
+  static bool _shouldShow(SentChallenge c) =>
+      c.targetEmail != null || c.status == 'USED';
 
   @override
   void dispose() {
@@ -422,24 +430,25 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
   void _onServiceUpdate() {
     if (!mounted) return;
     setState(() {
-      _items = _sentService.items.where((c) => c.targetEmail != null).toList();
+      _items = _sentService.items.where(_shouldShow).toList();
       _loading = false;
     });
   }
 
   Future<void> _cancel(SentChallenge c) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Cancelar solicitud?'),
+        title: Text(l10n.inboxCancelTitle),
         content: Text(
-          'La solicitud enviada a ${c.targetEmail ?? 'este usuario'} será cancelada y ya no podrá ser verificada.',
+          l10n.inboxCancelContent(c.targetEmail ?? l10n.sentRecipient),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No, mantener')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.inboxKeepButton)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Cancelar solicitud'),
+            child: Text(l10n.inboxCancelButton),
           ),
         ],
       ),
@@ -451,13 +460,13 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
       FeedbackService.sent();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Solicitud cancelada'), duration: Duration(seconds: 2)),
+          SnackBar(content: Text(l10n.inboxCancelledSnack), duration: const Duration(seconds: 2)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyError(e))),
+          SnackBar(content: Text(friendlyError(e, context))),
         );
       }
     }
@@ -471,13 +480,14 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
       setState(() { _loading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = friendlyError(e); });
+      setState(() { _loading = false; _error = friendlyError(e, context); });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -491,7 +501,7 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: cs.onSurfaceVariant)),
             const SizedBox(height: 16),
-            FilledButton.tonal(onPressed: _load, child: const Text('Reintentar')),
+            FilledButton.tonal(onPressed: _load, child: Text(l10n.retry)),
           ]),
         ),
       );
@@ -504,10 +514,10 @@ class _SentTabState extends State<_SentTab> with AutomaticKeepAliveClientMixin {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.send_outlined, size: 56, color: cs.onSurfaceVariant.withAlpha(128)),
             const SizedBox(height: 16),
-            Text('Sin solicitudes enviadas', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(l10n.inboxEmptySent, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 8),
             Text(
-              'Busca a un usuario y envíale una solicitud de verificación.',
+              l10n.inboxEmptySentDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -544,17 +554,18 @@ class _SentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final status = challenge.status;
     final isCompleted = status == 'USED';
     final hasPhoto = challenge.subjectPhoto != null && challenge.subjectPhoto!.isNotEmpty;
 
     final (Color chipColor, String chipLabel, IconData chipIcon) = switch (status) {
-      'USED'        => (const Color(0xFF2E7D32), 'Completada',   Icons.check_circle_rounded),
-      'IN_PROGRESS' => (const Color(0xFF1565C0), 'Verificando',  Icons.sync_rounded),
-      'EXPIRED'     => (const Color(0xFF757575), 'Expirada',     Icons.schedule_rounded),
-      'REJECTED'    => (const Color(0xFFC62828), 'Rechazada',    Icons.cancel_rounded),
-      'CANCELLED'   => (const Color(0xFF757575), 'Cancelada',    Icons.block_rounded),
-      _             => (const Color(0xFFF57F17), 'Pendiente',    Icons.hourglass_top_rounded),
+      'USED'        => (const Color(0xFF2E7D32), l10n.sentStatusUsed,       Icons.check_circle_rounded),
+      'IN_PROGRESS' => (const Color(0xFF1565C0), l10n.sentStatusInProgress, Icons.sync_rounded),
+      'EXPIRED'     => (const Color(0xFF757575), l10n.sentStatusExpired,    Icons.schedule_rounded),
+      'REJECTED'    => (const Color(0xFFC62828), l10n.sentStatusRejected,   Icons.cancel_rounded),
+      'CANCELLED'   => (const Color(0xFF757575), l10n.sentStatusCancelled,  Icons.block_rounded),
+      _             => (const Color(0xFFF57F17), l10n.sentStatusPending,    Icons.hourglass_top_rounded),
     };
 
     final card = Card(
@@ -580,7 +591,10 @@ class _SentCard extends StatelessWidget {
             child: hasPhoto
                 ? null
                 : Text(
-                    (challenge.targetEmail?.substring(0, 1) ?? '?').toUpperCase(),
+                    (challenge.subjectFullName?.substring(0, 1) ??
+                            challenge.targetEmail?.substring(0, 1) ??
+                            '?')
+                        .toUpperCase(),
                     style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.bold),
                   ),
           ),
@@ -588,7 +602,7 @@ class _SentCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                challenge.subjectFullName ?? challenge.targetEmail ?? 'Destinatario',
+                challenge.subjectFullName ?? challenge.targetEmail ?? l10n.sentRecipient,
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -602,7 +616,7 @@ class _SentCard extends StatelessWidget {
                 ),
               const SizedBox(height: 4),
               Text(
-                _formatDate(challenge.createdAt),
+                _formatDate(challenge.createdAt, l10n),
                 style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
               ),
             ]),
@@ -638,7 +652,7 @@ class _SentCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Cancelar solicitud',
+                  tooltip: l10n.inboxCancelTooltip,
                 ),
               ),
             ],
@@ -664,13 +678,13 @@ class _SentCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(String isoDate) {
+  String _formatDate(String isoDate, AppLocalizations l10n) {
     try {
       final dt = DateTime.parse(isoDate).toLocal();
       final now = DateTime.now();
       final diff = now.difference(dt);
-      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes}m';
-      if (diff.inHours < 24) return 'Hace ${diff.inHours}h';
+      if (diff.inMinutes < 60) return l10n.sentTimeAgoMinutes(diff.inMinutes);
+      if (diff.inHours < 24) return l10n.sentTimeAgoHours(diff.inHours);
       return '${dt.day}/${dt.month}/${dt.year}';
     } catch (_) {
       return isoDate;

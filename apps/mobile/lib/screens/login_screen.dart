@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
@@ -29,18 +30,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password.isNotEmpty;
   }
 
-  String _mapLoginError(Object e) {
+  String _mapLoginError(Object e, AppLocalizations l10n) {
     if (e is NetworkException) return e.message;
     final msg = e.toString().replaceFirst('Exception: ', '').toLowerCase();
     if (msg.contains('invalid_credentials') ||
         msg.contains('unauthorized') ||
         msg.contains('401')) {
-      return 'Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.';
+      return l10n.loginErrorInvalidCredentials;
     }
     if (msg.contains('account_not_found') || msg.contains('404')) {
-      return 'No existe una cuenta con ese correo electrónico.';
+      return l10n.loginErrorAccountNotFound;
     }
-    return friendlyError(e);
+    return friendlyError(e, context);
   }
 
   Future<void> _login() async {
@@ -66,8 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } catch (e) {
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _error = _mapLoginError(e);
+        _error = _mapLoginError(e, l10n);
         _loading = false;
       });
     }
@@ -89,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -109,13 +112,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 48),
-                Text('Iniciar sesión',
+                Text(l10n.loginTitle,
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('Usa tu correo y contraseña de VerifiA',
+                Text(l10n.loginSubtitle,
                     style: Theme.of(context)
                         .textTheme
                         .bodyMedium
@@ -124,18 +127,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
+                  onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                   decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
+                    labelText: l10n.emailLabel,
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty)
-                      return 'Ingresa tu correo electrónico';
+                      return l10n.loginEmailRequired;
                     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim()))
-                      return 'Correo electrónico no válido';
+                      return l10n.loginEmailInvalid;
                     return null;
                   },
                 ),
@@ -143,9 +148,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _passwordCtrl,
                   obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
+                  onFieldSubmitted: (_) { if (!_loading && _canSubmit) _login(); },
                   decoration: InputDecoration(
-                    labelText: 'Contraseña',
+                    labelText: l10n.passwordLabel,
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -158,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+                    if (v == null || v.isEmpty) return l10n.loginPasswordRequired;
                     return null;
                   },
                 ),
@@ -196,21 +203,40 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Text('Iniciar sesión',
-                            style: TextStyle(
+                        : Text(l10n.loginTitle,
+                            style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: TextButton(
+                const SizedBox(height: 24),
+                Row(children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      l10n.loginNoAccount,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                  const Expanded(child: Divider()),
+                ]),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                           builder: (_) => const OnboardingScreen()),
                     ),
-                    child: Text(
-                      '¿No tienes cuenta? Regístrate',
-                      style: TextStyle(color: cs.primary),
+                    icon: const Icon(Icons.person_add_outlined),
+                    label: Text(l10n.loginRegisterLink),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                 ),

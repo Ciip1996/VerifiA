@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../l10n/app_localizations.dart';
 import 'passkey_service.dart';
 
 // Backend URL — set via --dart-define or defaults to production
@@ -19,15 +21,19 @@ class NetworkException implements Exception {
   String toString() => message;
 }
 
-/// Top-level helper — maps any thrown object to a user-friendly Spanish string.
+/// Top-level helper — maps any thrown object to a user-friendly localized string.
 /// Import this wherever raw error strings are shown to the user.
-String friendlyError(Object e) {
-  if (e is NetworkException) return e.message;
+String friendlyError(Object e, BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  if (e is NetworkException) {
+    if (e.isNetwork) return l10n.errorNetwork;
+    return e.message;
+  }
   final s = e.toString().replaceFirst('Exception: ', '');
   final lower = s.toLowerCase();
   if (lower.contains('timeout') || lower.contains('no connection') ||
       lower.contains('network') || lower.contains('connection')) {
-    return 'Sin conexión. Verifica tu red e intenta de nuevo.';
+    return l10n.errorNetwork;
   }
   return s;
 }
