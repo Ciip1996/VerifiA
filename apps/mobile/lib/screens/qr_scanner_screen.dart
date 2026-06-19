@@ -151,7 +151,7 @@ class _QRScannerScreenState extends State<QRScannerScreen>
               icon: Icons.no_photography_outlined,
               title: 'Se necesita acceso a la cámara',
               subtitle:
-                  'Ve a Ajustes → Verifia Mobile → Cámara y actívala, luego pulsa Reintentar.',
+                  'Ve a Ajustes → Verifia → Cámara y actívala, luego pulsa Reintentar.',
               actionLabel: 'Reintentar',
               onAction: _safeStart,
             ),

@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         title: Image.asset(
           'assets/images/logo_dark.png',
-          height: 26,
+          height: 40,
           fit: BoxFit.contain,
         ),
         actions: [
