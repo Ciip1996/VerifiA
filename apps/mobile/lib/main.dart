@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/permissions_wizard_screen.dart';
@@ -16,11 +18,6 @@ final _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Prevent google_fonts from making network requests at startup — fonts are
-  // bundled in the package so this is safe. Without this, the font fetch
-  // triggers the iOS local-network permission dialog before the wizard starts.
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
   if (!skipAttest) unawaited(_initAppAttest());
@@ -102,6 +99,16 @@ class _VerifiAAppState extends State<VerifiAApp> {
     const resetWizard = bool.fromEnvironment('VERIFIA_RESET_WIZARD', defaultValue: false);
     if (resetWizard) {
       await storage.delete(key: 'permissions_wizard_done');
+    }
+
+    // Detect fresh install: Documents dir is cleared on uninstall, but the
+    // Keychain is not. If the marker file is absent, treat this as a new
+    // install and clear the wizard-done flag so it runs again.
+    final docsDir = await getApplicationDocumentsDirectory();
+    final installMarker = File('${docsDir.path}/.install_marker');
+    if (!await installMarker.exists()) {
+      await storage.delete(key: 'permissions_wizard_done');
+      await installMarker.create(recursive: true);
     }
 
     // Show permissions wizard on first launch before anything else
