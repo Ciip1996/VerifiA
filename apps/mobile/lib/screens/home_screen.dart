@@ -294,20 +294,13 @@ class _HomeScreenState extends State<HomeScreen> {
           fit: BoxFit.contain,
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              avatar: Icon(Icons.person_rounded, size: 16, color: cs.onSecondaryContainer),
-              label: Text(
-                _fullName ?? '···',
-                style: TextStyle(fontSize: 12, color: cs.onSecondaryContainer),
-              ),
-              backgroundColor: cs.secondaryContainer,
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AccountProfileScreen()),
-              ),
+          IconButton(
+            icon: const Icon(Icons.person_rounded),
+            color: cs.onSurface,
+            iconSize: 24,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AccountProfileScreen()),
             ),
           ),
         ],
