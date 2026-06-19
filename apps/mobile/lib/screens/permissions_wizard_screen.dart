@@ -22,7 +22,7 @@ const _text    = Color(0xFFF4F8FF);
 const _muted   = Color(0xFF8BA0B8);
 
 // ─── Step data ────────────────────────────────────────────────────────────────
-enum _WizardStep { welcome, camera, faceId, done }
+enum _WizardStep { welcome, network, camera, faceId, done }
 
 class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
     with SingleTickerProviderStateMixin {
@@ -60,6 +60,10 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
   }
 
   // ─── Permission actions ────────────────────────────────────────────────────
+
+  Future<void> _requestNetwork() async {
+    await _advance(_WizardStep.camera);
+  }
 
   Future<void> _requestCamera() async {
     setState(() => _loading = true);
@@ -124,7 +128,9 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
                 _buildDots(),
                 const SizedBox(height: 20),
                 _buildCTA(),
-                if (_step == _WizardStep.camera || _step == _WizardStep.faceId)
+                if (_step == _WizardStep.network ||
+                    _step == _WizardStep.camera ||
+                    _step == _WizardStep.faceId)
                   _buildSkip(),
                 const SizedBox(height: 32),
               ],
@@ -150,6 +156,16 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
               _buildBody(
                 'Para ofrecerte la mejor experiencia de verificación de identidad, '
                 'necesitamos configurar algunos permisos en tu dispositivo.',
+              ),
+            ],
+          _WizardStep.network => [
+              _buildHeroIcon(Icons.wifi_rounded),
+              const SizedBox(height: 32),
+              _buildTitle('Acceso a la red'),
+              const SizedBox(height: 14),
+              _buildBody(
+                'VerifiA necesita conectarse a internet para emitir y validar '
+                'badges de presencia en tiempo real de forma segura.',
               ),
             ],
           _WizardStep.camera => [
@@ -264,10 +280,11 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
 
   Widget _buildCTA() {
     final (label, action) = switch (_step) {
-      _WizardStep.welcome => ('Comenzar', () => _advance(_WizardStep.camera)),
-      _WizardStep.camera  => ('Permitir acceso a la cámara', _requestCamera),
-      _WizardStep.faceId  => ('Configurar Face ID', _requestFaceId),
-      _WizardStep.done    => ('Continuar', _finish),
+      _WizardStep.welcome  => ('Comenzar', () => _advance(_WizardStep.network)),
+      _WizardStep.network  => ('Entendido', _requestNetwork),
+      _WizardStep.camera   => ('Permitir acceso a la cámara', _requestCamera),
+      _WizardStep.faceId   => ('Configurar Face ID', _requestFaceId),
+      _WizardStep.done     => ('Continuar', _finish),
     };
 
     return SizedBox(
@@ -317,9 +334,11 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
       child: TextButton(
         onPressed: _loading
             ? null
-            : () => _advance(
-                  _step == _WizardStep.camera ? _WizardStep.faceId : _WizardStep.done,
-                ),
+            : () => _advance(switch (_step) {
+                  _WizardStep.network => _WizardStep.camera,
+                  _WizardStep.camera  => _WizardStep.faceId,
+                  _                   => _WizardStep.done,
+                }),
         child: const Text(
           'Ahora no',
           style: TextStyle(color: _muted, fontSize: 14),

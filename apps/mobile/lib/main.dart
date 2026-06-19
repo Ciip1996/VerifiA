@@ -17,6 +17,11 @@ final _navigatorKey = GlobalKey<NavigatorState>();
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Prevent google_fonts from making network requests at startup — fonts are
+  // bundled in the package so this is safe. Without this, the font fetch
+  // triggers the iOS local-network permission dialog before the wizard starts.
+  GoogleFonts.config.allowRuntimeFetching = false;
+
   const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
   if (!skipAttest) unawaited(_initAppAttest());
 

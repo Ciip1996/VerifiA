@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,6 +9,8 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 
 import '../services/api_service.dart';
 import '../services/facetec_service.dart';
+import 'liveness_screen.dart';
+import 'login_screen.dart';
 import 'set_password_screen.dart';
 
 /// First-run onboarding screen.
@@ -66,6 +69,93 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _step = _Step.form;
       });
     } catch (e) {
+      setState(() {
+        _errorMsg = friendlyError(e);
+        _step = _Step.form;
+      });
+    }
+  }
+
+  Future<void> _startAndroidIDCapture() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _step = _Step.scanning;
+      _errorMsg = null;
+    });
+
+    try {
+      // Step 1: Navigate to LivenessScreen for selfie capture
+      final livenessResult = await Navigator.of(context).push<FaceTecResult>(
+        MaterialPageRoute(
+          builder: (_) => const LivenessScreen(nonce: 'onboarding'),
+        ),
+      );
+      if (!mounted) return;
+      if (livenessResult == null) {
+        setState(() => _step = _Step.form);
+        return;
+      }
+
+      // Step 2: Capture ID front photo with rear camera
+      String idFrontBase64 = '';
+      final cameras = await availableCameras();
+      final rear = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+      final camCtrl = CameraController(
+        rear,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      try {
+        await camCtrl.initialize();
+        if (!mounted) {
+          await camCtrl.dispose();
+          return;
+        }
+        final file = await camCtrl.takePicture();
+        final bytes = await file.readAsBytes();
+        idFrontBase64 = base64Encode(bytes);
+      } finally {
+        await camCtrl.dispose();
+      }
+
+      // Step 3: Synthesize FaceTecIDMatchResult with captured data
+      final auditTrail =
+          livenessResult.auditTrailImageBase64 ?? livenessResult.faceScanBase64;
+      final result = FaceTecIDMatchResult(
+        sessionId:
+            'android-onboarding-${DateTime.now().millisecondsSinceEpoch}',
+        faceScanBase64: livenessResult.faceScanBase64,
+        auditTrailImage: auditTrail,
+        idFrontPhoto: idFrontBase64,
+        matchLevel: 0,
+        enrollmentRefId: '',
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _scanResult = result;
+        _step = _Step.preview;
+        _ocrRunning = true;
+      });
+
+      // Step 4: ML Kit OCR on the captured ID photo (same as iOS path)
+      final detectedName = await _extractNameFromPhoto(result.idFrontPhoto);
+      if (mounted) {
+        _nameCtrl.text = detectedName ?? result.fullName ?? '';
+        setState(() => _ocrRunning = false);
+      }
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMsg = e.message ?? 'Captura cancelada';
+        _step = _Step.form;
+      });
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMsg = friendlyError(e);
         _step = _Step.form;
@@ -246,7 +336,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            Image.asset('assets/images/icon_dark.png', width: 72, height: 72, fit: BoxFit.contain),
+            Image.asset('assets/images/logo_dark.png', height: 36, fit: BoxFit.contain),
             const SizedBox(height: 16),
             Text('Registro de identidad',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -302,13 +392,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _startIDMatch,
+                onPressed:
+                    Platform.isIOS ? _startIDMatch : _startAndroidIDCapture,
                 icon: const Icon(Icons.camera_alt_rounded),
                 label: const Text('Escanear ID con FaceTec'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
+                child: Text(
+                  '¿Ya tienes cuenta? Inicia sesión',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             ),
@@ -327,23 +431,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? cs.primaryContainer : cs.surfaceContainerHigh,
+            color: selected ? cs.primary : cs.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? cs.primary : Colors.transparent,
+              color: selected ? cs.primary : cs.outline.withAlpha(80),
               width: 2,
             ),
           ),
           child: Column(children: [
             Icon(icon,
-                color: selected ? cs.primary : cs.onSurfaceVariant, size: 28),
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant, size: 28),
             const SizedBox(height: 4),
             Text(
               type == 'INE' ? 'INE / IFE' : 'Pasaporte',
               style: TextStyle(
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
                 fontSize: 13,
               ),
             ),
