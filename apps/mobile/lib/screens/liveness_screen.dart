@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -113,7 +114,9 @@ class _LivenessScreenState extends State<LivenessScreen>
       final ctrl = CameraController(
         front,
         ResolutionPreset.medium,
-        imageFormatGroup: ImageFormatGroup.bgra8888,
+        imageFormatGroup: Platform.isIOS
+            ? ImageFormatGroup.bgra8888
+            : ImageFormatGroup.yuv420,
         enableAudio: false,
       );
 
@@ -159,14 +162,26 @@ class _LivenessScreenState extends State<LivenessScreen>
     if (format == null) {
       throw Exception('Unsupported image format: ${image.format.raw}');
     }
-    final plane = image.planes.first;
+
+    final Uint8List bytes;
+    if (Platform.isAndroid && image.planes.length > 1) {
+      // YUV420 on Android: concatenate all plane bytes for ML Kit
+      final List<int> all = [];
+      for (final plane in image.planes) {
+        all.addAll(plane.bytes);
+      }
+      bytes = Uint8List.fromList(all);
+    } else {
+      bytes = image.planes.first.bytes;
+    }
+
     return InputImage.fromBytes(
-      bytes: plane.bytes,
+      bytes: bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
         format: format,
-        bytesPerRow: plane.bytesPerRow,
+        bytesPerRow: image.planes.first.bytesPerRow,
       ),
     );
   }

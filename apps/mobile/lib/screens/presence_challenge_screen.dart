@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -94,18 +95,23 @@ class _PresenceChallengeScreenState extends State<PresenceChallengeScreen> {
       // Read stored enrollment ID to perform 3D-3D match during liveness
       final enrollmentRefId = await _storage.read(key: 'facetec_enrollment_ref_id');
       final FaceTecResult facetecResult;
-      try {
-        facetecResult = await FaceTecService().runLivenessSession(
-          nonce: widget.nonce,
-          enrollmentRefId: enrollmentRefId,
-        );
-      } on PlatformException catch (e) {
-        if (!mounted) return;
-        if (e.code == 'LIVENESS_CANCELLED') {
-          Navigator.of(context).pop();
-          return;
+      if (Platform.isIOS) {
+        try {
+          facetecResult = await FaceTecService().runLivenessSession(
+            nonce: widget.nonce,
+            enrollmentRefId: enrollmentRefId,
+          );
+        } on PlatformException catch (e) {
+          if (!mounted) return;
+          if (e.code == 'LIVENESS_CANCELLED') {
+            Navigator.of(context).pop();
+            return;
+          }
+          rethrow;
         }
-        rethrow;
+      } else {
+        // Android: reuse the ML Kit liveness result from step 1
+        facetecResult = mlKitResult;
       }
 
       if (!mounted) return;

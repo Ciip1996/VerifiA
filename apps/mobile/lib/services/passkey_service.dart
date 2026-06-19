@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -179,7 +180,9 @@ class PasskeyService {
     // Trigger real Face ID so the gesture is always required
     try {
       await _biometricsChannel.invokeMethod<bool>('authenticate', {
-        'reason': 'Firma tu presencia con Face ID',
+        'reason': Platform.isIOS
+            ? 'Firma tu presencia con Face ID'
+            : 'Confirma tu identidad',
       });
     } on PlatformException catch (e) {
       if (e.code == 'USER_CANCELLED') {
@@ -214,7 +217,7 @@ class PasskeyService {
     if (_passkeySupported != null) return _passkeySupported!;
     try {
       _passkeySupported = await _passkeyChannel.invokeMethod<bool>('isSupported') ?? false;
-    } on PlatformException {
+    } catch (e) {
       _passkeySupported = false;
     }
     return _passkeySupported!;

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -76,6 +77,12 @@ class AppAttestService {
   /// Generate a per-request assertion for the given nonce.
   /// Automatically recovers if the Secure Enclave key was invalidated (e.g. after reinstall).
   Future<AttestationResult> generateAssertion({required String challenge}) async {
+    if (!Platform.isIOS) {
+      return const AttestationResult(
+        assertion: 'ANDROID_STUB',
+        deviceId: 'ANDROID_DEVICE',
+      );
+    }
     if (_skipAttest) {
       return const AttestationResult(
         assertion: 'SKIP_ATTEST_ASSERTION',
