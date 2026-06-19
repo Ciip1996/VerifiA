@@ -288,12 +288,10 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: cs.surface,
         elevation: 0,
-        title: Row(
-          children: [
-            Icon(Icons.shield_rounded, color: cs.primary, size: 26),
-            const SizedBox(width: 8),
-            const Text('VerifiA', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
+        title: Image.asset(
+          'assets/images/logo_dark.png',
+          height: 26,
+          fit: BoxFit.contain,
         ),
         actions: [
           Padding(

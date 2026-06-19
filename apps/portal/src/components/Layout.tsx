@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useInbox } from '../context/InboxContext.tsx';
 import { useSentChanges } from '../context/SentChangesContext.tsx';
+import logo from '../assets/logo.svg';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -229,26 +230,10 @@ export function Layout() {
           borderBottom: '1px solid var(--color-border)',
           flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #00EAF2, #147BFF)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <VerifyIcon />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', letterSpacing: '-0.3px' }}>
-                Verifi<span style={{ color: 'var(--color-accent)' }}>A</span>
-              </div>
-              <div style={{ fontSize: '0.62rem', color: 'var(--color-muted)', letterSpacing: 0.3 }}>
-                PORTAL DE IDENTIDAD
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <img src={logo} alt="VerifiA" style={{ width: '100%', objectFit: 'contain', objectPosition: 'left' }} />
+            <div style={{ fontSize: '0.62rem', color: 'var(--color-muted)', letterSpacing: 0.3 }}>
+              PORTAL DE IDENTIDAD
             </div>
           </div>
         </div>

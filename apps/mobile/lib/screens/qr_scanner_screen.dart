@@ -119,14 +119,6 @@ class _QRScannerScreenState extends State<QRScannerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text(
-          'VerifiA',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        centerTitle: true,
-      ),
       body: Stack(
         fit: StackFit.expand,
         children: [

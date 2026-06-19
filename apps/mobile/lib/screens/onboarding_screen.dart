@@ -246,7 +246,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            Icon(Icons.verified_user_rounded, size: 56, color: cs.primary),
+            Image.asset('assets/images/icon_dark.png', width: 72, height: 72, fit: BoxFit.contain),
             const SizedBox(height: 16),
             Text('Registro de identidad',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(

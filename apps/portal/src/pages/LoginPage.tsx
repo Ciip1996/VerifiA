@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/client.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import logo from '../assets/logo.svg';
 
 const ERROR_MAP: Record<string, string> = {
   invalid_credentials: 'Correo o contraseña incorrectos. Verifica tus datos.',
@@ -55,24 +56,8 @@ export function LoginPage() {
       }}>
         {/* Logo / brand */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: 'rgba(0,234,242,0.15)',
-            border: '2px solid rgba(0,234,242,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1rem',
-            fontSize: 26,
-          }}>
-            🛡️
-          </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            VerifiA
-          </h1>
-          <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', marginTop: '0.4rem' }}>
+          <img src={logo} alt="VerifiA" style={{ height: 90, objectFit: 'contain', marginBottom: '1rem' }} />
+          <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', margin: 0 }}>
             Inicia sesión con tu cuenta verificada
           </p>
         </div>
