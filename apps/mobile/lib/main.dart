@@ -15,8 +15,6 @@ import 'screens/permissions_wizard_screen.dart';
 import 'screens/presence_challenge_screen.dart';
 import 'services/app_attest_service.dart' show AppAttestService;
 import 'services/api_service.dart';
-import 'services/onesignal_service.dart';
-
 // Global navigator key so deep link handler can push routes from outside widget tree
 final _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -28,16 +26,10 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
-  const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
-  if (!skipAttest) unawaited(_initAppAttest());
-
-  // Initialize OneSignal before runApp. Permission is NOT requested here —
-  // it is requested only when the user taps "Got it" in the verification dialog.
-  OneSignalService().initialize();
-
   runApp(const VerifiAApp());
 }
 
+// ignore: unused_element
 Future<void> _initAppAttest() async {
   const storage = FlutterSecureStorage();
   final appAttest = AppAttestService();

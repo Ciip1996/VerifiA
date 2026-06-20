@@ -1874,6 +1874,72 @@ abstract class AppLocalizations {
   /// **'Ahora no'**
   String get permSkip;
 
+  /// Permissions wizard notifications step title
+  ///
+  /// In es, this message translates to:
+  /// **'Notificaciones push'**
+  String get permNotificationsTitle;
+
+  /// Permissions wizard notifications step body
+  ///
+  /// In es, this message translates to:
+  /// **'VerifiA te avisa cuando llega una solicitud de verificación, cuando alguien completa la tuya o si una es rechazada o cancelada.'**
+  String get permNotificationsBody;
+
+  /// Permissions wizard CTA for notifications step
+  ///
+  /// In es, this message translates to:
+  /// **'Activar notificaciones'**
+  String get permCtaNotifications;
+
+  /// Label above the permission checklist on the done step
+  ///
+  /// In es, this message translates to:
+  /// **'Estado de permisos'**
+  String get permDoneChecklist;
+
+  /// Checklist row for network/internet permission
+  ///
+  /// In es, this message translates to:
+  /// **'Acceso a internet'**
+  String get permCheckNetwork;
+
+  /// Checklist row for push notifications permission
+  ///
+  /// In es, this message translates to:
+  /// **'Notificaciones push'**
+  String get permCheckNotifications;
+
+  /// Checklist row for camera permission
+  ///
+  /// In es, this message translates to:
+  /// **'Cámara'**
+  String get permCheckCamera;
+
+  /// Checklist row for Face ID/biometrics permission
+  ///
+  /// In es, this message translates to:
+  /// **'Face ID / Biometría'**
+  String get permCheckFaceId;
+
+  /// Button to retry a denied permission
+  ///
+  /// In es, this message translates to:
+  /// **'Reintentar'**
+  String get permRetryButton;
+
+  /// Button to open app settings for permanently denied permission
+  ///
+  /// In es, this message translates to:
+  /// **'Abrir ajustes'**
+  String get permOpenSettings;
+
+  /// Body shown on done step when some permissions are still denied
+  ///
+  /// In es, this message translates to:
+  /// **'Activa todos los permisos para continuar.'**
+  String get permDoneBodyBlocked;
+
   /// Button label to request camera permission on QR scanner screen
   ///
   /// In es, this message translates to:

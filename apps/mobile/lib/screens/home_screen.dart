@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../services/app_attest_service.dart' show AppAttestService;
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
 import '../services/onesignal_service.dart';
@@ -44,9 +46,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _inbox.start();
     _sent.addListener(_onSentChanged);
     _sent.start();
-    // Show one-time push subscription verification dialog once context is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) OneSignalService().setupSubscriptionVerification(context);
+      if (mounted) {
+        OneSignalService().initialize();
+        OneSignalService().setupSubscriptionVerification(context);
+        const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
+        if (!skipAttest) {
+          unawaited(AppAttestService().registerIfNeeded(ApiService()));
+        }
+      }
     });
   }
 

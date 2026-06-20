@@ -322,6 +322,18 @@
   "permCtaContinue": "Continue",
   "permSkip": "Not now",
 
+  "permNotificationsTitle": "Push notifications",
+  "permNotificationsBody": "VerifiA notifies you when a verification request arrives, when someone completes yours, or if one is rejected or cancelled.",
+  "permCtaNotifications": "Enable notifications",
+  "permDoneChecklist": "Permission status",
+  "permCheckNetwork": "Internet access",
+  "permCheckNotifications": "Push notifications",
+  "permCheckCamera": "Camera",
+  "permCheckFaceId": "Face ID / Biometrics",
+  "permRetryButton": "Retry",
+  "permOpenSettings": "Open settings",
+  "permDoneBodyBlocked": "Enable all permissions to continue.",
+
   "scannerCameraError": "Could not start camera",
   "scannerStarting": "Starting camera…",
   "scannerPermissionTitle": "Camera access required",

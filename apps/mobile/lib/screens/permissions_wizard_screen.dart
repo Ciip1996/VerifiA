@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/app_attest_service.dart' show AppAttestService;
+import '../services/api_service.dart';
+import '../services/onesignal_service.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -23,12 +29,20 @@ const _text    = Color(0xFFF4F8FF);
 const _muted   = Color(0xFF8BA0B8);
 
 // ─── Step data ────────────────────────────────────────────────────────────────
-enum _WizardStep { welcome, network, camera, faceId, done }
+enum _WizardStep { welcome, network, notifications, camera, faceId, done }
 
 class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
     with SingleTickerProviderStateMixin {
   _WizardStep _step = _WizardStep.welcome;
   bool _loading = false;
+
+  // ignore: prefer_final_fields
+  bool _networkGranted = true;      // internet is always available on iOS
+  bool _notificationsGranted = false;
+  bool _notificationsPermanentlyDenied = false;
+  bool _cameraGranted = false;
+  bool _cameraPermanentlyDenied = false;
+  bool _faceIdGranted = false;
 
   static const _biometricsChannel = MethodChannel('com.verifia.app/biometrics');
   static const _storage = FlutterSecureStorage();
@@ -63,13 +77,35 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
   // ─── Permission actions ────────────────────────────────────────────────────
 
   Future<void> _requestNetwork() async {
+    // Start App Attest in background — no dialog, just network calls
+    unawaited(AppAttestService().registerIfNeeded(ApiService()));
+    // Initialize OneSignal SDK (no permission dialog yet)
+    OneSignalService().initialize();
+    await _advance(_WizardStep.notifications);
+  }
+
+  Future<void> _requestNotifications() async {
+    setState(() => _loading = true);
+    final granted = await OneSignal.Notifications.requestPermission(true);
+    if (!mounted) return;
+    // Check if permanently denied (for iOS: denied twice = permanently denied)
+    final status = await Permission.notification.status;
+    setState(() {
+      _notificationsGranted = granted;
+      _notificationsPermanentlyDenied = status.isPermanentlyDenied;
+      _loading = false;
+    });
     await _advance(_WizardStep.camera);
   }
 
   Future<void> _requestCamera() async {
     setState(() => _loading = true);
-    await Permission.camera.request();
-    setState(() => _loading = false);
+    final status = await Permission.camera.request();
+    setState(() {
+      _cameraGranted = status.isGranted;
+      _cameraPermanentlyDenied = status.isPermanentlyDenied;
+      _loading = false;
+    });
     await _advance(_WizardStep.faceId);
   }
 
@@ -77,8 +113,9 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
     setState(() => _loading = true);
     try {
       await _biometricsChannel.invokeMethod('authenticate');
+      setState(() => _faceIdGranted = true);
     } catch (_) {
-      // Surface the iOS Face ID dialog; ignore result — user may deny and proceed
+      // User may deny; still advance
     }
     setState(() => _loading = false);
     await _advance(_WizardStep.done);
@@ -101,6 +138,43 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
       ),
     );
   }
+
+  // ─── Retry helpers ─────────────────────────────────────────────────────────
+
+  Future<void> _retryNotifications() async {
+    setState(() => _loading = true);
+    final granted = await OneSignal.Notifications.requestPermission(true);
+    final status = await Permission.notification.status;
+    setState(() {
+      _notificationsGranted = granted;
+      _notificationsPermanentlyDenied = status.isPermanentlyDenied;
+      _loading = false;
+    });
+  }
+
+  Future<void> _retryCamera() async {
+    setState(() => _loading = true);
+    final status = await Permission.camera.request();
+    setState(() {
+      _cameraGranted = status.isGranted;
+      _cameraPermanentlyDenied = status.isPermanentlyDenied;
+      _loading = false;
+    });
+  }
+
+  Future<void> _retryFaceId() async {
+    setState(() => _loading = true);
+    try {
+      await _biometricsChannel.invokeMethod('authenticate');
+      setState(() => _faceIdGranted = true);
+    } catch (_) {}
+    setState(() => _loading = false);
+  }
+
+  // ─── Computed state ────────────────────────────────────────────────────────
+
+  bool get _allGranted =>
+      _networkGranted && _notificationsGranted && _cameraGranted && _faceIdGranted;
 
   // ─── Build ─────────────────────────────────────────────────────────────────
 
@@ -131,6 +205,7 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
                 const SizedBox(height: 20),
                 _buildCTA(l10n),
                 if (_step == _WizardStep.network ||
+                    _step == _WizardStep.notifications ||
                     _step == _WizardStep.camera ||
                     _step == _WizardStep.faceId)
                   _buildSkip(l10n),
@@ -164,6 +239,13 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
               const SizedBox(height: 14),
               _buildBody(l10n.permNetworkBody),
             ],
+          _WizardStep.notifications => [
+              _buildHeroIcon(Icons.notifications_rounded),
+              const SizedBox(height: 32),
+              _buildTitle(l10n.permNotificationsTitle),
+              const SizedBox(height: 14),
+              _buildBody(l10n.permNotificationsBody),
+            ],
           _WizardStep.camera => [
               _buildHeroIcon(Icons.camera_alt_rounded),
               const SizedBox(height: 32),
@@ -179,11 +261,16 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
               _buildBody(l10n.permFaceIdBody),
             ],
           _WizardStep.done => [
-              _buildHeroIcon(Icons.check_circle_rounded, success: true),
+              _buildHeroIcon(Icons.check_circle_rounded, success: _allGranted),
               const SizedBox(height: 32),
               _buildTitle(l10n.permDoneTitle),
               const SizedBox(height: 14),
-              _buildBody(l10n.permDoneBody),
+              if (!_allGranted)
+                _buildBody(l10n.permDoneBodyBlocked)
+              else
+                _buildBody(l10n.permDoneBody),
+              const SizedBox(height: 20),
+              _buildChecklist(l10n),
             ],
         },
       ),
@@ -268,11 +355,12 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
 
   Widget _buildCTA(AppLocalizations l10n) {
     final (label, action) = switch (_step) {
-      _WizardStep.welcome  => (l10n.permCtaBegin, () => _advance(_WizardStep.network)),
-      _WizardStep.network  => (l10n.permCtaUnderstood, _requestNetwork),
-      _WizardStep.camera   => (l10n.permCtaCamera, _requestCamera),
-      _WizardStep.faceId   => (l10n.permCtaFaceId, _requestFaceId),
-      _WizardStep.done     => (l10n.permCtaContinue, _finish),
+      _WizardStep.welcome       => (l10n.permCtaBegin, () => _advance(_WizardStep.network)),
+      _WizardStep.network       => (l10n.permCtaUnderstood, _requestNetwork),
+      _WizardStep.notifications => (l10n.permCtaNotifications, _requestNotifications),
+      _WizardStep.camera        => (l10n.permCtaCamera, _requestCamera),
+      _WizardStep.faceId        => (l10n.permCtaFaceId, _requestFaceId),
+      _WizardStep.done          => (l10n.permCtaContinue, _allGranted ? _finish : null),
     };
 
     return SizedBox(
@@ -322,16 +410,100 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
       child: TextButton(
         onPressed: _loading
             ? null
-            : () => _advance(switch (_step) {
-                  _WizardStep.network => _WizardStep.camera,
-                  _WizardStep.camera  => _WizardStep.faceId,
-                  _                   => _WizardStep.done,
-                }),
+            : () {
+                switch (_step) {
+                  case _WizardStep.notifications:
+                    setState(() => _notificationsGranted = false);
+                    _advance(_WizardStep.camera);
+                  case _WizardStep.camera:
+                    setState(() => _cameraGranted = false);
+                    _advance(_WizardStep.faceId);
+                  case _WizardStep.faceId:
+                    setState(() => _faceIdGranted = false);
+                    _advance(_WizardStep.done);
+                  default:
+                    _advance(switch (_step) {
+                      _WizardStep.network => _WizardStep.notifications,
+                      _ => _WizardStep.done,
+                    });
+                }
+              },
         child: Text(
           l10n.permSkip,
           style: const TextStyle(color: _muted, fontSize: 14),
         ),
       ),
+    );
+  }
+
+  // ─── Checklist ─────────────────────────────────────────────────────────────
+
+  Widget _buildChecklist(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.permDoneChecklist,
+          style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        _buildCheckRow(l10n.permCheckNetwork, _networkGranted, canRetry: false, l10n: l10n),
+        _buildCheckRow(l10n.permCheckNotifications, _notificationsGranted,
+            permanentlyDenied: _notificationsPermanentlyDenied,
+            onRetry: _notificationsPermanentlyDenied ? () => openAppSettings() : _retryNotifications,
+            l10n: l10n),
+        _buildCheckRow(l10n.permCheckCamera, _cameraGranted,
+            permanentlyDenied: _cameraPermanentlyDenied,
+            onRetry: _cameraPermanentlyDenied ? () => openAppSettings() : _retryCamera,
+            l10n: l10n),
+        _buildCheckRow(l10n.permCheckFaceId, _faceIdGranted,
+            onRetry: _retryFaceId,
+            l10n: l10n),
+      ],
+    );
+  }
+
+  Widget _buildCheckRow(
+    String label,
+    bool granted, {
+    bool canRetry = true,
+    bool permanentlyDenied = false,
+    VoidCallback? onRetry,
+    required AppLocalizations l10n,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(children: [
+        Icon(
+          granted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          color: granted ? const Color(0xFF22C55E) : _muted,
+          size: 20,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: granted ? _text : _muted,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        if (!granted && canRetry && onRetry != null)
+          TextButton(
+            onPressed: _loading ? null : onRetry,
+            style: TextButton.styleFrom(
+              foregroundColor: _cyan,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              permanentlyDenied ? l10n.permOpenSettings : l10n.permRetryButton,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+      ]),
     );
   }
 }

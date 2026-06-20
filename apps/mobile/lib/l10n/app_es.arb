@@ -946,6 +946,39 @@
   "permSkip": "Ahora no",
   "@permSkip": { "description": "Permissions wizard skip button label" },
 
+  "permNotificationsTitle": "Notificaciones push",
+  "@permNotificationsTitle": { "description": "Permissions wizard notifications step title" },
+
+  "permNotificationsBody": "VerifiA te avisa cuando llega una solicitud de verificación, cuando alguien completa la tuya o si una es rechazada o cancelada.",
+  "@permNotificationsBody": { "description": "Permissions wizard notifications step body" },
+
+  "permCtaNotifications": "Activar notificaciones",
+  "@permCtaNotifications": { "description": "Permissions wizard CTA for notifications step" },
+
+  "permDoneChecklist": "Estado de permisos",
+  "@permDoneChecklist": { "description": "Label above the permission checklist on the done step" },
+
+  "permCheckNetwork": "Acceso a internet",
+  "@permCheckNetwork": { "description": "Checklist row for network/internet permission" },
+
+  "permCheckNotifications": "Notificaciones push",
+  "@permCheckNotifications": { "description": "Checklist row for push notifications permission" },
+
+  "permCheckCamera": "Cámara",
+  "@permCheckCamera": { "description": "Checklist row for camera permission" },
+
+  "permCheckFaceId": "Face ID / Biometría",
+  "@permCheckFaceId": { "description": "Checklist row for Face ID/biometrics permission" },
+
+  "permRetryButton": "Reintentar",
+  "@permRetryButton": { "description": "Button to retry a denied permission" },
+
+  "permOpenSettings": "Abrir ajustes",
+  "@permOpenSettings": { "description": "Button to open app settings for permanently denied permission" },
+
+  "permDoneBodyBlocked": "Activa todos los permisos para continuar.",
+  "@permDoneBodyBlocked": { "description": "Body shown on done step when some permissions are still denied" },
+
   "scannerCameraError": "No se pudo iniciar la cámara",
   "@scannerCameraError": { "description": "Error title shown when the QR scanner camera fails to start" },
 

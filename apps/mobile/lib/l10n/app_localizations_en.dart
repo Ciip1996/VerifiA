@@ -977,6 +977,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permSkip => 'Not now';
 
   @override
+  String get permNotificationsTitle => 'Push notifications';
+
+  @override
+  String get permNotificationsBody =>
+      'VerifiA notifies you when a verification request arrives, when someone completes yours, or if one is rejected or cancelled.';
+
+  @override
+  String get permCtaNotifications => 'Enable notifications';
+
+  @override
+  String get permDoneChecklist => 'Permission status';
+
+  @override
+  String get permCheckNetwork => 'Internet access';
+
+  @override
+  String get permCheckNotifications => 'Push notifications';
+
+  @override
+  String get permCheckCamera => 'Camera';
+
+  @override
+  String get permCheckFaceId => 'Face ID / Biometrics';
+
+  @override
+  String get permRetryButton => 'Retry';
+
+  @override
+  String get permOpenSettings => 'Open settings';
+
+  @override
+  String get permDoneBodyBlocked => 'Enable all permissions to continue.';
+
+  @override
   String get scannerAllowCamera => 'Allow camera';
 
   @override
