@@ -7,6 +7,7 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { verifyAppAttestAssertion } from '../services/app-attest.js';
 import { verifyFaceTecSession } from '../services/facetec.js';
 import { verifyPasskeyAssertion } from '../services/passkeys.js';
+import { pushToAccount } from '../services/push.js';
 
 export const tokensRouter = Router();
 
@@ -161,6 +162,21 @@ tokensRouter.post('/issue', async (req, res, next) => {
         result: 'SUCCESS',
       },
     });
+
+    // 11. Push notification to sender — verification completed
+    if (challenge.account_id) {
+      // Fetch verifier profile name for a friendlier message
+      const verifierProfile = await prisma.userProfile.findUnique({
+        where: { device_id },
+        select: { full_name: true },
+      });
+      const verifierName = verifierProfile?.full_name ?? 'Alguien';
+      pushToAccount(challenge.account_id, {
+        title: '✅ Verificación completada',
+        body: `${verifierName} completó tu solicitud de verificación.`,
+        data: { type: 'CHALLENGE_USED', nonce },
+      }).catch(() => {});
+    }
 
     const ttl = parseInt(process.env.TOKEN_TTL_SECONDS ?? '300', 10);
 

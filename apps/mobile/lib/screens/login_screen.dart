@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../services/onesignal_service.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -62,6 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       // Mark device as registered so next launch goes straight to HomeScreen
       await storage.write(key: 'profile_registered', value: 'true');
+      // Associate this device with the account in OneSignal
+      OneSignalService().login(profile.id);
+      OneSignalService().setEmail(profile.email);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),

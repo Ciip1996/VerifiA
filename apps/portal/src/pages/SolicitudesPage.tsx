@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   rejectChallenge,
   cancelChallenge,
@@ -15,6 +16,7 @@ type TabId = 'recibidas' | 'enviadas';
 // ─── SolicitudesPage ──────────────────────────────────────────────────────────
 
 export function SolicitudesPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabId>('recibidas');
   const { markAllSeen } = useInbox();
 
@@ -22,34 +24,38 @@ export function SolicitudesPage() {
     if (tab === 'recibidas') markAllSeen();
   }, [tab, markAllSeen]);
 
+  const TABS: { id: TabId; label: string }[] = [
+    { id: 'recibidas', label: t('solicitudes.tabReceived') },
+    { id: 'enviadas', label: t('solicitudes.tabSent') },
+  ];
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.5rem' }}>
       <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Solicitudes</h1>
-        <p style={{ fontSize: '0.88rem', color: 'var(--color-muted)' }}>Verificaciones recibidas y enviadas.</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>{t('solicitudes.title')}</h1>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-muted)' }}>{t('solicitudes.subtitle')}</p>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-        {(['recibidas', 'enviadas'] as const).map((t) => (
+        {TABS.map(({ id, label }) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={id}
+            onClick={() => setTab(id)}
             style={{
               padding: '0.55rem 1.2rem',
               border: 'none',
               background: 'transparent',
-              color: tab === t ? 'var(--color-accent)' : 'var(--color-muted)',
-              fontWeight: tab === t ? 700 : 400,
+              color: tab === id ? 'var(--color-accent)' : 'var(--color-muted)',
+              fontWeight: tab === id ? 700 : 400,
               fontSize: '0.9rem',
               cursor: 'pointer',
-              borderBottom: tab === t ? '2px solid var(--color-accent)' : '2px solid transparent',
+              borderBottom: tab === id ? '2px solid var(--color-accent)' : '2px solid transparent',
               marginBottom: -1,
               transition: 'color 0.15s',
-              textTransform: 'capitalize',
             }}
           >
-            {t === 'recibidas' ? 'Recibidas' : 'Enviadas'}
+            {label}
           </button>
         ))}
       </div>
@@ -113,6 +119,7 @@ function ConfirmDialog({
 // ─── Recibidas tab ────────────────────────────────────────────────────────────
 
 function RecibidasTab() {
+  const { t } = useTranslation();
   const { items, loading, refresh } = useInbox();
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [confirmNonce, setConfirmNonce] = useState<string | null>(null);
@@ -134,9 +141,9 @@ function RecibidasTab() {
     <>
       {confirmNonce && (
         <ConfirmDialog
-          title="Rechazar solicitud"
-          body="¿Deseas rechazar esta solicitud de verificación? Esta acción no se puede deshacer."
-          confirmLabel="Rechazar"
+          title={t('solicitudes.confirmRejectTitle')}
+          body={t('solicitudes.confirmRejectBody')}
+          confirmLabel={t('solicitudes.confirmRejectButton')}
           confirmColor="#ef4444"
           onConfirm={() => void doReject(confirmNonce)}
           onCancel={() => setConfirmNonce(null)}
@@ -149,7 +156,7 @@ function RecibidasTab() {
           disabled={loading}
           style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: loading ? 0.6 : 1 }}
         >
-          ↻ Actualizar
+          {t('solicitudes.refreshButton')}
         </button>
       </div>
 
@@ -158,8 +165,8 @@ function RecibidasTab() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="📬"
-          title="No tienes solicitudes pendientes"
-          subtitle="Cuando alguien te solicite verificar tu identidad, aparecerá aquí."
+          title={t('solicitudes.emptyReceivedTitle')}
+          subtitle={t('solicitudes.emptyReceivedSubtitle')}
         />
       ) : (
         <div>
@@ -169,7 +176,7 @@ function RecibidasTab() {
             borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--color-accent)',
           }}>
             <span style={{ flexShrink: 0 }}>📱</span>
-            <span>Para completar la verificación, escanea el QR con la app VerifiA en tu iPhone.</span>
+            <span>{t('solicitudes.scanHint')}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {items.map((item) => (
@@ -187,7 +194,8 @@ function RecibidasTab() {
   );
 }
 
-function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; onReject: (n: string) => void; rejecting: string | null }) {
+function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; onReject: (n: string) => void; rejecting: string | null; }) {
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState(() =>
     Math.max(0, Math.floor((new Date(item.expires_at).getTime() - Date.now()) / 1000)),
   );
@@ -216,7 +224,7 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{item.requester.email}</div>
           <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', marginTop: '0.1rem' }}>
-            Solicita verificar tu identidad
+            {t('solicitudes.requestsIdentity')}
           </div>
         </div>
         <button
@@ -229,7 +237,7 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
             fontSize: '0.8rem', fontWeight: 600, opacity: rejecting === item.nonce || timeLeft === 0 ? 0.5 : 1, flexShrink: 0,
           }}
         >
-          {rejecting === item.nonce ? 'Rechazando…' : 'Rechazar'}
+          {rejecting === item.nonce ? t('solicitudes.rejecting') : t('solicitudes.rejectButton')}
         </button>
       </div>
 
@@ -238,7 +246,7 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
           <div style={{ height: '100%', width: `${pct * 100}%`, background: barColor, borderRadius: 3, transition: 'width 1s linear, background 0.3s' }} />
         </div>
         <span style={{ fontSize: '0.72rem', color: timeLeft === 0 ? '#ef4444' : 'var(--color-muted)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-          {timeLeft === 0 ? 'Expirado' : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`}
+          {timeLeft === 0 ? t('expired') : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`}
         </span>
       </div>
     </div>
@@ -250,6 +258,7 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
 const POLL_MS = 8000;
 
 function EnviadasTab() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ChallengeHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -293,8 +302,8 @@ function EnviadasTab() {
     return (
       <EmptyState
         icon="📤"
-        title="No has enviado solicitudes"
-        subtitle="Cuando crees un QR dirigido a alguien, aparecerá aquí."
+        title={t('solicitudes.emptySentTitle')}
+        subtitle={t('solicitudes.emptySentSubtitle')}
         onRefresh={load}
       />
     );
@@ -304,9 +313,9 @@ function EnviadasTab() {
     <>
       {confirmCancel && (
         <ConfirmDialog
-          title="Cancelar solicitud"
-          body="¿Deseas cancelar esta solicitud de verificación pendiente? Esta acción no se puede deshacer."
-          confirmLabel="Cancelar solicitud"
+          title={t('solicitudes.confirmCancelTitle')}
+          body={t('solicitudes.confirmCancelBody')}
+          confirmLabel={t('solicitudes.confirmCancelButton')}
           confirmColor="#ef4444"
           onConfirm={() => void doCancel(confirmCancel)}
           onCancel={() => setConfirmCancel(null)}
@@ -315,7 +324,7 @@ function EnviadasTab() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
         <button onClick={load} style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.82rem' }}>
-          ↻ Actualizar
+          {t('solicitudes.refreshButton')}
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -343,7 +352,8 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
   onOpenDetail: (i: ChallengeHistoryItem) => void;
   cancelling: string | null;
 }) {
-  const { text: stText, color: stColor } = statusLabel(item);
+  const { t } = useTranslation();
+  const { text: stText, color: stColor } = statusLabel(item, t);
   const date = new Date(item.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
   const isCompleted = item.token?.status === 'USED';
   const canCancel = item.status === 'PENDING' || item.status === 'IN_PROGRESS';
@@ -367,7 +377,7 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
           <UserAvatar src={item.subject?.profile_photo ?? null} name={item.subject?.full_name ?? null} size={36} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.subject?.full_name ?? item.target_email ?? 'Verificación abierta'}
+              {item.subject?.full_name ?? item.target_email ?? t('solicitudes.openVerification')}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{date}</div>
           </div>
@@ -381,11 +391,11 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
               onClick={(e) => { e.stopPropagation(); onCancel(item.nonce); }}
               disabled={cancelling === item.nonce}
               style={{ padding: '0.15rem 0.55rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.06)', color: '#ef4444', cursor: cancelling === item.nonce ? 'not-allowed' : 'pointer', fontSize: '0.7rem', fontWeight: 600, opacity: cancelling === item.nonce ? 0.6 : 1 }}>
-              {cancelling === item.nonce ? 'Cancelando…' : 'Cancelar'}
+              {cancelling === item.nonce ? t('solicitudes.cancelling') : t('solicitudes.cancelButton')}
             </button>
           )}
           {isCompleted && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>Ver detalle →</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>{t('solicitudes.viewDetail')}</span>
           )}
         </div>
       </div>
@@ -411,18 +421,19 @@ function SentCard({ item, onCancel, onOpenDetail, cancelling }: {
   );
 }
 
-function statusLabel(item: ChallengeHistoryItem): { text: string; color: string } {
-  if (item.status === 'CANCELLED') return { text: 'Cancelado', color: '#9ca3af' };
-  if (item.status === 'REJECTED') return { text: 'Rechazado', color: '#f59e0b' };
-  if (item.token?.status === 'USED') return { text: 'Completada', color: '#22c55e' };
-  if (item.status === 'IN_PROGRESS') return { text: 'Verificando', color: '#3b82f6' };
-  if (item.status === 'PENDING') return { text: 'Pendiente', color: 'var(--color-accent)' };
+function statusLabel(item: ChallengeHistoryItem, t: (key: string) => string): { text: string; color: string } {
+  if (item.status === 'CANCELLED') return { text: t('solicitudes.statusCancelled'), color: '#9ca3af' };
+  if (item.status === 'REJECTED') return { text: t('solicitudes.statusRejected'), color: '#f59e0b' };
+  if (item.token?.status === 'USED') return { text: t('solicitudes.statusCompleted'), color: '#22c55e' };
+  if (item.status === 'IN_PROGRESS') return { text: t('solicitudes.statusInProgress'), color: '#3b82f6' };
+  if (item.status === 'PENDING') return { text: t('solicitudes.statusPending'), color: 'var(--color-accent)' };
   return { text: item.status, color: 'var(--color-muted)' };
 }
 
 // ─── Verification detail drawer ───────────────────────────────────────────────
 
 function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryItem; onClose: () => void }) {
+  const { t } = useTranslation();
   const [closing, setClosing] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
   const b64Src = (b64: string) => `data:image/jpeg;base64,${b64}`;
@@ -457,13 +468,13 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text)' }}>Detalle de verificación</div>
+            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text)' }}>{t('solicitudes.detailTitle')}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
               {new Date(item.created_at).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}
             </div>
           </div>
           <button onClick={close} style={{ padding: '0.4rem 0.75rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '1rem' }}>
-            ✕
+            {t('close')}
           </button>
         </div>
 
@@ -478,10 +489,10 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{subject.full_name}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginBottom: '0.35rem' }}>
-                {idTypeLabel(subject.id_type)}
+                {idTypeLabel(subject.id_type, t)}
               </div>
               <span style={{ fontSize: '0.72rem', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
-                ✓ Verificación completada
+                {t('solicitudes.verifiedBadgeLabel')}
               </span>
             </div>
           </div>
@@ -489,42 +500,42 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
 
         {/* Timestamps + metadata */}
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '0.9rem 1rem', marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>DETALLES</div>
-          <DrawerRow label="Solicitud creada" value={new Date(item.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'medium' })} />
+          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>{t('solicitudes.detailsSectionLabel')}</div>
+          <DrawerRow label={t('solicitudes.createdAtLabel')} value={new Date(item.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' })} />
           {token?.validated_at && (
-            <DrawerRow label="Verificado a las" value={new Date(token.validated_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'medium' })} />
+            <DrawerRow label={t('solicitudes.verifiedAtLabel')} value={new Date(token.validated_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' })} />
           )}
           {subject?.id_type && (
-            <DrawerRow label="Tipo de ID" value={idTypeLabel(subject.id_type)} />
+            <DrawerRow label={t('solicitudes.idTypeLabel')} value={idTypeLabel(subject.id_type, t)} />
           )}
         </div>
 
         {/* Biometric scores */}
         {token && token.liveness_match_score != null && (
           <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>PUNTAJES BIOMÉTRICOS</div>
-            <ScoreBar label="Match 3D vs 3D (verificación en vivo)" score={token.liveness_match_score} />
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.6rem' }}>{t('solicitudes.biometricsSectionLabel')}</div>
+            <ScoreBar label={t('solicitudes.matchLabel')} score={token.liveness_match_score} t={t} />
           </div>
         )}
 
         {/* Photos */}
         <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.75rem' }}>FOTOS</div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.75rem' }}>{t('solicitudes.photosSectionLabel')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             {token?.liveness_snapshot ? (
-              <ClickablePhoto src={b64Src(token.liveness_snapshot)} label="Selfie en verificación" onOpen={setLightbox} />
+              <ClickablePhoto src={b64Src(token.liveness_snapshot)} label={t('solicitudes.selfieLabel')} onOpen={setLightbox} />
             ) : (
-              <EmptyPhotoBox label="Selfie en verificación" />
+              <EmptyPhotoBox label={t('solicitudes.selfieLabel')} />
             )}
             {subject?.profile_photo ? (
-              <ClickablePhoto src={b64Src(subject.profile_photo)} label="Foto de registro" onOpen={setLightbox} />
+              <ClickablePhoto src={b64Src(subject.profile_photo)} label={t('solicitudes.profilePhotoLabel')} onOpen={setLightbox} />
             ) : (
-              <EmptyPhotoBox label="Foto de registro" />
+              <EmptyPhotoBox label={t('solicitudes.profilePhotoLabel')} />
             )}
             {subject?.id_front_photo ? (
-              <ClickablePhoto src={b64Src(subject.id_front_photo)} label="Identificación oficial" onOpen={setLightbox} />
+              <ClickablePhoto src={b64Src(subject.id_front_photo)} label={t('solicitudes.idPhotoLabel')} onOpen={setLightbox} />
             ) : (
-              <EmptyPhotoBox label="Identificación oficial" />
+              <EmptyPhotoBox label={t('solicitudes.idPhotoLabel')} />
             )}
           </div>
         </div>
@@ -545,10 +556,10 @@ function VerificationDetailDrawer({ item, onClose }: { item: ChallengeHistoryIte
   );
 }
 
-function idTypeLabel(idType: string | null): string {
-  if (idType === 'INE') return 'INE / IFE';
-  if (idType === 'PASSPORT') return 'Pasaporte';
-  return idType ?? 'Identificación';
+function idTypeLabel(idType: string | null, t: (key: string) => string): string {
+  if (idType === 'INE') return t('solicitudes.idTypeINE');
+  if (idType === 'PASSPORT') return t('solicitudes.idTypePassport');
+  return idType ?? t('solicitudes.idTypeUnknown');
 }
 
 function ClickablePhoto({ src, label, onOpen }: { src: string; label: string; onOpen: (v: { src: string; label: string }) => void }) {
@@ -577,9 +588,9 @@ function DrawerRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ScoreBar({ label, score }: { label: string; score: number }) {
+function ScoreBar({ label, score, t }: { label: string; score: number; t: (key: string) => string }) {
   const color = score >= 70 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
-  const sublabel = score >= 85 ? 'Excelente' : score >= 70 ? 'Muy alto' : score >= 50 ? 'Aceptable' : 'Bajo';
+  const sublabel = score >= 85 ? t('solicitudes.matchExcellent') : score >= 70 ? t('solicitudes.matchVeryHigh') : score >= 50 ? t('solicitudes.matchAcceptable') : t('solicitudes.matchLow');
   return (
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
@@ -616,10 +627,11 @@ function UserAvatar({ src, name, size = 36 }: { src: string | null; name: string
 }
 
 function LoadingSpinner() {
+  const { t } = useTranslation();
   return (
     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
       <div style={{ width: 32, height: 32, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.75rem' }} />
-      Cargando…
+      {t('loading')}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { passkeysRouter } from './routes/passkeys.js';
 import { profilesRouter } from './routes/profiles.js';
 import { authRouter } from './routes/auth.js';
 import { accountsRouter } from './routes/accounts.js';
+import { devicesRouter } from './routes/devices.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 const app = express();
@@ -72,6 +73,7 @@ app.use('/api/v1/tokens', tokensRouter);
 app.use('/api/v1/passkeys', passkeysRouter);
 app.use('/api/v1/profile', profilesRouter);
 app.use('/api/v1/accounts', accountsRouter);
+app.use('/api/v1/devices', devicesRouter);
 
 // ─── Deep-link redirect page ───────────────────────────────────────────────
 // GET /r/:nonce — serves an HTML page that auto-opens verifia:// in the app.

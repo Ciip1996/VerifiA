@@ -21,9 +21,26 @@ model Account {
   password_hash String
   device_id     String   @unique // links to UserProfile.device_id
 
-  created_at DateTime @default(now())
+  created_at    DateTime @default(now())
+  device_tokens DeviceToken[]
 
   @@map("accounts")
+}
+
+// ─── DeviceToken ──────────────────────────────────────────────────────────
+// Push notification token for an Account's device (OneSignal player ID).
+// One row per device; upserted on app launch after permission granted.
+model DeviceToken {
+  id         String   @id @default(cuid())
+  account_id String
+  token      String   @unique  // OneSignal player/subscription ID
+  platform   String            // "ios" | "android"
+  created_at DateTime @default(now())
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+
+  @@index([account_id])
+  @@map("device_tokens")
 }
 
 // ─── Challenge ────────────────────────────────────────────────────────────

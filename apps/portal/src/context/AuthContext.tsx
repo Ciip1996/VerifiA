@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { loginOneSignal, logoutOneSignal, initOneSignal } from '../services/onesignal.ts';
 
 export interface AccountProfile {
   id: string;
@@ -31,14 +32,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
-  // Restore session from localStorage on mount
+  // Restore session from localStorage on mount and init OneSignal
   useEffect(() => {
+    void initOneSignal();
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       const accountJson = localStorage.getItem(ACCOUNT_KEY);
       if (token && accountJson) {
         const account = JSON.parse(accountJson) as AccountProfile;
         setState({ account, sessionToken: token, loading: false });
+        // Re-link the existing session with OneSignal on page reload
+        void loginOneSignal(account.id, token);
       } else {
         setState(s => ({ ...s, loading: false }));
       }
@@ -51,9 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
     setState({ account, sessionToken: token, loading: false });
+    void loginOneSignal(account.id, token);
   }, []);
 
   const logout = useCallback(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) void logoutOneSignal(token);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ACCOUNT_KEY);
     setState({ account: null, sessionToken: null, loading: false });

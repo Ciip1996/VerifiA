@@ -12,8 +12,9 @@ import { useAuth } from './AuthContext.tsx';
 
 export interface SentChange {
   nonce: string;
-  newStatus: 'REJECTED' | 'CANCELLED';
+  newStatus: 'REJECTED' | 'CANCELLED' | 'USED';
   targetEmail: string | null;
+  subjectFullName: string | null;
 }
 
 interface SentChangesContextValue {
@@ -28,8 +29,10 @@ const POLL_MS = 8000;
 export function SentChangesProvider({ children }: { children: ReactNode }) {
   const { sessionToken } = useAuth();
   const [latestChange, setLatestChange] = useState<SentChange | null>(null);
-  // Map nonce → status for previously seen challenges
+  // Map nonce → challenge status for previously seen challenges
   const prevStatusRef = useRef<Map<string, string>>(new Map());
+  // Map nonce → token status to detect PENDING/IN_PROGRESS → USED transitions
+  const prevTokenStatusRef = useRef<Map<string, string>>(new Map());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
@@ -38,14 +41,35 @@ export function SentChangesProvider({ children }: { children: ReactNode }) {
       const res = await getChallengeHistory();
       for (const item of res.items) {
         const prev = prevStatusRef.current.get(item.nonce);
-        if (prev === 'PENDING' && (item.status === 'REJECTED' || item.status === 'CANCELLED')) {
+        const prevToken = prevTokenStatusRef.current.get(item.nonce);
+        const tokenStatus = item.token?.status ?? null;
+
+        // USED: token completed (fires only after we've seen the item at least once)
+        if (
+          tokenStatus === 'USED' &&
+          prevToken !== undefined &&
+          prevToken !== 'USED'
+        ) {
+          setLatestChange({
+            nonce: item.nonce,
+            newStatus: 'USED',
+            targetEmail: item.target_email,
+            subjectFullName: item.subject?.full_name ?? null,
+          });
+        } else if (
+          prev === 'PENDING' &&
+          (item.status === 'REJECTED' || item.status === 'CANCELLED')
+        ) {
           setLatestChange({
             nonce: item.nonce,
             newStatus: item.status as 'REJECTED' | 'CANCELLED',
             targetEmail: item.target_email,
+            subjectFullName: item.subject?.full_name ?? null,
           });
         }
+
         prevStatusRef.current.set(item.nonce, item.status);
+        if (tokenStatus) prevTokenStatusRef.current.set(item.nonce, tokenStatus);
       }
     } catch {
       // network hiccup — keep polling
@@ -55,6 +79,7 @@ export function SentChangesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!sessionToken) {
       prevStatusRef.current.clear();
+      prevTokenStatusRef.current.clear();
       return;
     }
     void poll();

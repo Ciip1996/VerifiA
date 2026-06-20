@@ -1,16 +1,12 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { login } from '../api/client.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import logo from '../assets/logo.svg';
 
-const ERROR_MAP: Record<string, string> = {
-  invalid_credentials: 'Correo o contraseña incorrectos. Verifica tus datos.',
-  account_not_found: 'No existe una cuenta con ese correo electrónico.',
-  too_many_requests: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
-};
-
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login: storeLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +15,12 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ERROR_MAP: Record<string, string> = {
+    invalid_credentials: t('login.errorInvalidCredentials'),
+    account_not_found: t('login.errorAccountNotFound'),
+    too_many_requests: t('login.errorTooManyRequests'),
+  };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -30,7 +32,7 @@ export function LoginPage() {
       navigate('/', { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
-      setError(ERROR_MAP[msg] ?? 'Error al iniciar sesión. Intenta de nuevo.');
+      setError(ERROR_MAP[msg] ?? t('login.errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -58,20 +60,20 @@ export function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img src={logo} alt="VerifiA" style={{ height: 90, objectFit: 'contain', marginBottom: '1rem' }} />
           <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', margin: 0 }}>
-            Inicia sesión con tu cuenta verificada
+            {t('login.subtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--color-muted)', marginBottom: '0.35rem', fontWeight: 600 }}>
-              Correo electrónico
+              {t('login.emailLabel')}
             </label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="tu@email.com"
+              placeholder={t('login.emailPlaceholder')}
               required
               autoFocus
               style={{
@@ -90,7 +92,7 @@ export function LoginPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--color-muted)', marginBottom: '0.35rem', fontWeight: 600 }}>
-              Contraseña
+              {t('login.passwordLabel')}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -119,7 +121,7 @@ export function LoginPage() {
                   background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)',
                   padding: '0.2rem', display: 'flex', alignItems: 'center',
                 }}
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               >
                 {showPassword ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,12 +168,12 @@ export function LoginPage() {
               marginTop: '0.5rem',
             }}
           >
-            {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
+            {loading ? t('login.submitting') : t('login.submitButton')}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.82rem', marginTop: '1.5rem', lineHeight: 1.5 }}>
-          ¿No tienes cuenta? Regístrate desde la app móvil de VerifiA escaneando tu INE con FaceTec.
+          {t('login.noAccount')}
         </p>
       </div>
     </div>

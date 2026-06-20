@@ -45,6 +45,7 @@ dependencies:
   app_links: ^7.0.0
   google_mlkit_text_recognition: ^0.15.1
   google_fonts: ^6.2.1
+  onesignal_flutter: ^5.6.2
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { searchAccounts, type AccountSearchResult } from '../api/client.ts';
 
 export function SearchPage() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AccountSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,24 +32,24 @@ export function SearchPage() {
         setResults(res.results);
         setSearched(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error en la búsqueda');
+        setError(err instanceof Error ? err.message : t('search.searchError'));
         setSearched(true);
       } finally {
         setLoading(false);
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, t]);
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '2rem 1.5rem' }}>
       {/* Page header */}
       <div style={{ marginBottom: '1.75rem' }}>
         <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>
-          Buscar usuarios
+          {t('search.title')}
         </h1>
         <p style={{ fontSize: '0.88rem', color: 'var(--color-muted)' }}>
-          Encuentra usuarios registrados en VerifiA y solicita su verificación.
+          {t('search.subtitle')}
         </p>
       </div>
 
@@ -61,7 +63,7 @@ export function SearchPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre o correo…"
+          placeholder={t('search.placeholder')}
           style={{
             width: '100%',
             padding: '0.75rem 0.9rem 0.75rem 2.75rem',
@@ -93,22 +95,22 @@ export function SearchPage() {
       {!searched && !loading && (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-muted)' }}>
           <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔍</div>
-          <div style={{ fontSize: '0.9rem' }}>Escribe al menos 2 caracteres para buscar</div>
+          <div style={{ fontSize: '0.9rem' }}>{t('search.emptySubtitle')}</div>
         </div>
       )}
 
       {searched && results.length === 0 && !loading && !error && (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-muted)' }}>
           <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>👤</div>
-          <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.4rem' }}>Sin resultados</div>
-          <div style={{ fontSize: '0.85rem' }}>No se encontraron usuarios con "{query}"</div>
+          <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.4rem' }}>{t('search.noResults')}</div>
+          <div style={{ fontSize: '0.85rem' }}>{t('search.noResultsSubtitle')}</div>
         </div>
       )}
 
       {results.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: '0.25rem' }}>
-            {results.length} resultado{results.length !== 1 ? 's' : ''}
+            {results.length} {results.length !== 1 ? t('search.noResults').toLowerCase() : t('search.noResults').toLowerCase()}
           </div>
           {results.map((user) => (
             <UserCard

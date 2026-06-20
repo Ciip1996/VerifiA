@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getMeDetails, type AccountDetails } from '../api/client.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 
 export function ProfilePage() {
+  const { t } = useTranslation();
   const { account, logout } = useAuth();
   const navigate = useNavigate();
   const [details, setDetails] = useState<AccountDetails | null>(null);
@@ -16,7 +18,7 @@ export function ProfilePage() {
     setLoading(true);
     getMeDetails()
       .then(setDetails)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar perfil'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('profile.loadingError')))
       .finally(() => setLoading(false));
   }
 
@@ -36,17 +38,17 @@ export function ProfilePage() {
       {/* Page header */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>
-          Mi perfil
+          {t('profile.title')}
         </h1>
         <p style={{ fontSize: '0.88rem', color: 'var(--color-muted)' }}>
-          Tu identidad verificada en VerifiA.
+          {t('profile.subtitle')}
         </p>
       </div>
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
           <div style={{ width: 32, height: 32, border: '3px solid rgba(0,234,242,0.3)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-          Cargando perfil…
+          {t('loading')}
         </div>
       )}
 
@@ -59,7 +61,7 @@ export function ProfilePage() {
             onClick={loadDetails}
             style={{ padding: '0.55rem 1.25rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.88rem' }}
           >
-            ↻ Reintentar
+            {t('profile.retryButton')}
           </button>
         </div>
       )}
@@ -111,7 +113,7 @@ export function ProfilePage() {
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
-                  Identidad verificada
+                  {t('profile.verifiedBadge')}
                 </span>
               )}
             </div>
@@ -122,16 +124,16 @@ export function ProfilePage() {
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 14, padding: '1rem 1.1rem', marginBottom: '1.25rem',
           }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.75rem' }}>INFORMACIÓN DE CUENTA</div>
-            <ProfileRow label="Correo electrónico" value={displayData.email} />
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', letterSpacing: 1, fontWeight: 600, marginBottom: '0.75rem' }}>{t('solicitudes.detailsSectionLabel')}</div>
+            <ProfileRow label={t('profile.emailLabel')} value={displayData.email} />
             {displayData.id_type && (
-              <ProfileRow label="Tipo de ID" value={displayData.id_type === 'INE' ? 'INE / IFE' : 'Pasaporte'} />
+              <ProfileRow label={t('profile.idTypeLabel')} value={displayData.id_type === 'INE' ? t('profile.idTypeINE') : t('profile.idTypePassport')} />
             )}
             {details?.date_of_birth && (
-              <ProfileRow label="Fecha de nacimiento" value={details.date_of_birth} />
+              <ProfileRow label={t('profile.birthDateLabel')} value={details.date_of_birth} />
             )}
             {details?.curp && (
-              <ProfileRow label="CURP" value={details.curp} mono />
+              <ProfileRow label={t('profile.curpLabel')} value={details.curp} mono />
             )}
           </div>
 
@@ -161,7 +163,7 @@ export function ProfilePage() {
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.14)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
             >
-              Cerrar sesión
+              {t('profile.logoutButton')}
             </button>
           ) : (
             <div style={{
@@ -169,23 +171,23 @@ export function ProfilePage() {
               borderRadius: 12, padding: '1rem 1.1rem',
             }}>
               <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '0.4rem' }}>
-                ¿Cerrar sesión?
+                {t('profile.confirmLogoutTitle')}
               </div>
               <div style={{ fontSize: '0.82rem', color: 'var(--color-muted)', marginBottom: '1rem' }}>
-                Tendrás que iniciar sesión de nuevo para acceder al portal.
+                {t('profile.confirmLogoutBody')}
               </div>
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 <button
                   onClick={handleLogout}
                   style={{ flex: 1, padding: '0.6rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem' }}
                 >
-                  Sí, cerrar sesión
+                  {t('profile.confirmLogoutButton')}
                 </button>
                 <button
                   onClick={() => setConfirmLogout(false)}
                   style={{ flex: 1, padding: '0.6rem', background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: '0.88rem' }}
                 >
-                  Cancelar
+                  {t('cancel')}
                 </button>
               </div>
             </div>

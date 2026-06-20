@@ -457,6 +457,28 @@ class ApiService {
     }
   }
 
+  /// Registers a OneSignal subscription ID with the backend for push notifications.
+  Future<void> registerDeviceToken(String token, String platform) async {
+    try {
+      await _dio.post('/api/v1/devices/register', data: {
+        'token': token,
+        'platform': platform,
+      });
+    } on DioException catch (e) {
+      // Best-effort — log but do not throw
+      debugPrint('[ApiService] registerDeviceToken error: ${_handleDioError(e, 'registerDeviceToken')}');
+    }
+  }
+
+  /// Removes a OneSignal subscription ID on logout.
+  Future<void> unregisterDeviceToken(String token) async {
+    try {
+      await _dio.delete('/api/v1/devices/unregister', data: {'token': token});
+    } on DioException catch (e) {
+      debugPrint('[ApiService] unregisterDeviceToken error: ${_handleDioError(e, 'unregisterDeviceToken')}');
+    }
+  }
+
   /// Create a new verification challenge (QR code) from the mobile app.
   Future<Map<String, dynamic>> createChallenge({String? targetEmail}) async {
     try {

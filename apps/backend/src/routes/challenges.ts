@@ -5,6 +5,7 @@ import { prisma } from '../services/db.js';
 import { generateNonce } from '../utils/crypto.js';
 import { AppError } from '../middleware/error-handler.js';
 import { requireAccount, optionalAccount } from '../middleware/account-auth.js';
+import { pushToAccount, pushToEmail } from '../services/push.js';
 
 // Instantiated lazily inside the route so a missing key only errors on use, not startup.
 function getResend() {
@@ -278,7 +279,7 @@ challengesRouter.patch('/:nonce/start', async (req, res, next) => {
 
     const challenge = await prisma.challenge.findUnique({
       where: { nonce },
-      select: { nonce: true, status: true, exp_time: true },
+      select: { nonce: true, status: true, exp_time: true, account_id: true, target_email: true },
     });
 
     if (!challenge) {
@@ -290,6 +291,15 @@ challengesRouter.patch('/:nonce/start', async (req, res, next) => {
         where: { nonce },
         data: { status: 'IN_PROGRESS' },
       });
+
+      // Notify sender that someone started their verification request
+      if (challenge.account_id) {
+        pushToAccount(challenge.account_id, {
+          title: 'Verificación en progreso',
+          body: 'Alguien abrió tu solicitud de verificación y está completando el proceso.',
+          data: { type: 'CHALLENGE_IN_PROGRESS', nonce },
+        }).catch(() => {});
+      }
     }
 
     res.json({ success: true });
@@ -309,7 +319,7 @@ challengesRouter.patch('/:nonce/reject', requireAccount, async (req, res, next) 
 
     const challenge = await prisma.challenge.findUnique({
       where: { nonce },
-      select: { nonce: true, status: true, target_email: true },
+      select: { nonce: true, status: true, target_email: true, account_id: true },
     });
 
     if (!challenge) {
@@ -326,6 +336,15 @@ challengesRouter.patch('/:nonce/reject', requireAccount, async (req, res, next) 
       where: { nonce },
       data: { status: 'REJECTED', rejection_reason: 'Rechazada por el destinatario' },
     });
+
+    // Notify sender that their request was rejected
+    if (challenge.account_id) {
+      pushToAccount(challenge.account_id, {
+        title: 'Solicitud rechazada',
+        body: `${req.account!.email} rechazó tu solicitud de verificación.`,
+        data: { type: 'CHALLENGE_REJECTED', nonce },
+      }).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -344,7 +363,7 @@ challengesRouter.patch('/:nonce/cancel', requireAccount, async (req, res, next) 
 
     const challenge = await prisma.challenge.findUnique({
       where: { nonce },
-      select: { nonce: true, status: true, account_id: true },
+      select: { nonce: true, status: true, account_id: true, target_email: true },
     });
 
     if (!challenge) {
@@ -361,6 +380,15 @@ challengesRouter.patch('/:nonce/cancel', requireAccount, async (req, res, next) 
       where: { nonce },
       data: { status: 'CANCELLED' },
     });
+
+    // Notify recipient that the request was cancelled
+    if (challenge.target_email) {
+      pushToEmail(challenge.target_email, {
+        title: 'Solicitud cancelada',
+        body: `${req.account!.email} canceló la solicitud de verificación.`,
+        data: { type: 'CHALLENGE_CANCELLED', nonce },
+      }).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (err) {

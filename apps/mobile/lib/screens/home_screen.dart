@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
+import '../services/onesignal_service.dart';
 import '../services/sent_challenges_service.dart';
 import 'account_profile_screen.dart';
 import 'login_screen.dart';
@@ -43,6 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _inbox.start();
     _sent.addListener(_onSentChanged);
     _sent.start();
+    // Show one-time push subscription verification dialog once context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) OneSignalService().setupSubscriptionVerification(context);
+    });
   }
 
   @override

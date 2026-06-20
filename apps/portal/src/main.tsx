@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { InboxProvider } from './context/InboxContext.tsx';
 import { SentChangesProvider } from './context/SentChangesContext.tsx';
+import './i18n.ts';
 import './index.css';
 
 const root = document.getElementById('root');

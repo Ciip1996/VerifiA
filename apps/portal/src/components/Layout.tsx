@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useInbox } from '../context/InboxContext.tsx';
 import { useSentChanges } from '../context/SentChangesContext.tsx';
+import { hasPushPermission, isOneSignalConfigured, requestPushPermission } from '../services/onesignal.ts';
 import logo from '../assets/logo.svg';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -131,31 +133,72 @@ function Avatar({ src, name, size = 32 }: { src: string | null; name: string | n
   );
 }
 
-// ── Nav items config ──────────────────────────────────────────────────────────
+// ── Language toggle ───────────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Verificar', Icon: ShieldIcon, end: true },
-  { to: '/solicitudes', label: 'Solicitudes', Icon: BellIcon, end: false },
-  { to: '/buscar', label: 'Buscar', Icon: SearchIcon, end: false },
-  { to: '/perfil', label: 'Mi perfil', Icon: UserIcon, end: false },
-] as const;
+function LangToggle() {
+  const { i18n } = useTranslation();
+  const isEs = i18n.resolvedLanguage === 'es';
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: '0.35rem 0.5rem' }}>
+      <button
+        onClick={() => void i18n.changeLanguage('es')}
+        style={{
+          padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+          fontSize: '0.72rem', fontWeight: isEs ? 700 : 400,
+          background: isEs ? 'rgba(0,234,242,0.15)' : 'transparent',
+          color: isEs ? 'var(--color-accent)' : 'var(--color-muted)',
+        }}
+      >
+        ES
+      </button>
+      <button
+        onClick={() => void i18n.changeLanguage('en')}
+        style={{
+          padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+          fontSize: '0.72rem', fontWeight: !isEs ? 700 : 400,
+          background: !isEs ? 'rgba(0,234,242,0.15)' : 'transparent',
+          color: !isEs ? 'var(--color-accent)' : 'var(--color-muted)',
+        }}
+      >
+        EN
+      </button>
+    </div>
+  );
+}
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 export function Layout() {
+  const { t } = useTranslation();
   const { account, logout } = useAuth();
   const { unseenCount, isOffline, latestNew, consumeLatestNew } = useInbox();
   const { latestChange, consumeLatestChange } = useSentChanges();
   const navigate = useNavigate();
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+
+  // Show soft push permission prompt once per session if not yet granted
+  useEffect(() => {
+    if (!account || !isOneSignalConfigured()) return;
+    // Small delay so the page settles before presenting the prompt
+    const id = setTimeout(() => {
+      if (!hasPushPermission()) setShowPushPrompt(true);
+    }, 3000);
+    return () => clearTimeout(id);
+  }, [account]);
+
+  const NAV_ITEMS = [
+    { to: '/', label: t('nav.verify'), Icon: ShieldIcon, end: true },
+    { to: '/solicitudes', label: t('nav.requests'), Icon: BellIcon, end: false },
+    { to: '/buscar', label: t('nav.search'), Icon: SearchIcon, end: false },
+    { to: '/perfil', label: t('nav.profile'), Icon: UserIcon, end: false },
+  ] as const;
 
   function handleLogout() {
     logout();
     navigate('/login', { replace: true });
   }
 
-  const badgeCounts: Record<string, number> = {
-    '/solicitudes': unseenCount,
-  };
+  const badgeCounts: Record<string, number> = { '/solicitudes': unseenCount };
 
   // Auto-dismiss challenge banner after 6s
   useEffect(() => {
@@ -181,7 +224,7 @@ export function Layout() {
           background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '0.82rem', color: '#fff', fontWeight: 600, animation: 'slideDown 0.35s ease',
         }}>
-          Sin conexión con el servidor
+          {t('banner.offline')}
         </div>
       )}
 
@@ -197,15 +240,35 @@ export function Layout() {
             {(latestNew.requester.full_name ?? latestNew.requester.email).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
-            <strong>{latestNew.requester.full_name ?? latestNew.requester.email}</strong> te solicita verificar tu identidad
+            <strong>{latestNew.requester.full_name ?? latestNew.requester.email}</strong>{' '}{t('banner.incomingRequest')}
           </span>
-          <button onClick={consumeLatestNew} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Descartar</button>
-          <button onClick={() => { navigate('/solicitudes'); consumeLatestNew(); }} style={{ background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.3)', color: 'var(--color-accent)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
+          <button onClick={consumeLatestNew} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>{t('dismiss')}</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestNew(); }} style={{ background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.3)', color: 'var(--color-accent)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>{t('view')}</button>
         </div>
       )}
 
-      {/* ── Sent-change banner ───────────────────────────────────────────── */}
-      {latestChange && !latestNew && (
+      {/* ── Verified (USED) banner ───────────────────────────────────────── */}
+      {latestChange?.newStatus === 'USED' && !latestNew && (
+        <div style={{
+          position: 'fixed', top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 498,
+          background: 'var(--color-surface)', borderBottom: '1px solid rgba(34,197,94,0.35)',
+          padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          animation: 'slideDown 0.35s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', border: '2px solid rgba(34,197,94,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <VerifyIcon />
+          </div>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
+            <strong style={{ color: '#22c55e' }}>{latestChange.subjectFullName ?? latestChange.targetEmail ?? t('banner.someone')}</strong>{' '}
+            {t('banner.verifiedRequest')}
+          </span>
+          <button onClick={consumeLatestChange} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>{t('dismiss')}</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestChange(); }} style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>{t('view')}</button>
+        </div>
+      )}
+
+      {/* ── Sent-change banner (rejected / cancelled) ────────────────────── */}
+      {latestChange && latestChange.newStatus !== 'USED' && !latestNew && (
         <div style={{
           position: 'fixed', top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 498,
           background: 'var(--color-surface)', borderBottom: '1px solid rgba(245,158,11,0.35)',
@@ -213,11 +276,11 @@ export function Layout() {
           animation: 'slideDown 0.35s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
         }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', flex: 1 }}>
-            <strong>{latestChange.targetEmail ?? 'Alguien'}</strong>{' '}
-            {latestChange.newStatus === 'REJECTED' ? 'rechazó' : 'canceló'} tu solicitud de verificación.
+            <strong>{latestChange.subjectFullName ?? latestChange.targetEmail ?? t('banner.someone')}</strong>{' '}
+            {latestChange.newStatus === 'REJECTED' ? t('banner.rejectedRequest') : t('banner.cancelledRequest')}
           </span>
-          <button onClick={consumeLatestChange} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Descartar</button>
-          <button onClick={() => { navigate('/solicitudes'); consumeLatestChange(); }} style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>Ver</button>
+          <button onClick={consumeLatestChange} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>{t('dismiss')}</button>
+          <button onClick={() => { navigate('/solicitudes'); consumeLatestChange(); }} style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 7 }}>{t('view')}</button>
         </div>
       )}
 
@@ -233,7 +296,7 @@ export function Layout() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <img src={logo} alt="VerifiA" style={{ width: '100%', objectFit: 'contain', objectPosition: 'left' }} />
             <div style={{ fontSize: '0.62rem', color: 'var(--color-muted)', letterSpacing: 0.3 }}>
-              PORTAL DE IDENTIDAD
+              {t('portalLabel')}
             </div>
           </div>
         </div>
@@ -281,8 +344,9 @@ export function Layout() {
             style={{ color: '#ef4444' }}
           >
             <LogOutIcon />
-            <span>Cerrar sesión</span>
+            <span>{t('nav.logout')}</span>
           </button>
+          <LangToggle />
         </div>
       </aside>
 
@@ -291,8 +355,53 @@ export function Layout() {
         <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
           Verifi<span style={{ color: 'var(--color-accent)' }}>A</span>
         </div>
-        <Avatar src={account?.profile_photo ?? null} name={account?.full_name ?? null} size={30} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <LangToggle />
+          <Avatar src={account?.profile_photo ?? null} name={account?.full_name ?? null} size={30} />
+        </div>
       </div>
+
+      {/* ── Push permission prompt ───────────────────────────────────────── */}
+      {showPushPrompt && (
+        <div style={{
+          position: 'fixed', bottom: 80, right: 16, zIndex: 490,
+          background: 'var(--color-surface)', border: '1px solid rgba(0,234,242,0.3)',
+          borderRadius: 14, padding: '1rem 1.1rem', maxWidth: 320,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'slideDown 0.35s ease',
+        }}>
+          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: '0.35rem' }}>
+            🔔 Notificaciones
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginBottom: '0.85rem', lineHeight: 1.4 }}>
+            Activa las notificaciones para recibir alertas cuando alguien complete una verificación.
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => {
+                setShowPushPrompt(false);
+                void requestPushPermission();
+              }}
+              style={{
+                flex: 1, padding: '0.45rem 0.75rem', borderRadius: 8,
+                background: 'rgba(0,234,242,0.15)', border: '1px solid rgba(0,234,242,0.35)',
+                color: 'var(--color-accent)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+              }}
+            >
+              Activar
+            </button>
+            <button
+              onClick={() => setShowPushPrompt(false)}
+              style={{
+                padding: '0.45rem 0.75rem', borderRadius: 8,
+                background: 'transparent', border: '1px solid var(--color-border)',
+                color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.8rem',
+              }}
+            >
+              {t('dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <main className="verifia-main">

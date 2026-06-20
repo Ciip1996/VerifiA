@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../services/onesignal_service.dart';
 import 'home_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
@@ -50,6 +51,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    // Disassociate device from account and unregister push token
+    await OneSignalService().logout();
     await ApiService.clearSession();
     await _storage.delete(key: 'verifia_account_email');
     await _storage.delete(key: 'verifia_account_id');
