@@ -218,9 +218,19 @@ class FaceTecChannel: NSObject {
         custom.securityWatermarkImage = .faceTec
         custom.cancelButtonCustomization.location = .topLeft
 
-        let bundle = Bundle.main
-        if let path = bundle.path(forResource: "flutter_assets/assets/images/logo_light", ofType: "png"),
+        // Flutter assets are bundled inside App.framework, not in the main Runner bundle.
+        // Use inDirectory: to properly address the subdirectory path.
+        let appFrameworkURL = Bundle.main.bundleURL
+            .appendingPathComponent("Frameworks/App.framework")
+        let flutterBundle = Bundle(url: appFrameworkURL) ?? Bundle.main
+        if let path = flutterBundle.path(forResource: "logo_light", ofType: "png",
+                                         inDirectory: "flutter_assets/assets/images"),
            let logoImage = UIImage(contentsOfFile: path) {
+            custom.overlayCustomization.brandingImage = logoImage
+        } else if let path = Bundle.main.path(forResource: "logo_light", ofType: "png",
+                                              inDirectory: "flutter_assets/assets/images"),
+                  let logoImage = UIImage(contentsOfFile: path) {
+            // Fallback for builds where assets land in the main bundle
             custom.overlayCustomization.brandingImage = logoImage
         }
 

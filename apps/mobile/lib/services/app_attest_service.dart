@@ -103,9 +103,8 @@ class AppAttestService {
       // DCError.invalidKey (error 2) — Secure Enclave key invalidated after reinstall.
       // Clear stored keys, re-register with a fresh key, and also reset the
       // profile_registered flag so the user is taken through onboarding again.
-      if (e.message?.contains('error 2') == true ||
-          e.code == 'ATTEST_FAILED') {
-        debugPrint('[AppAttest] Key invalidated — clearing and re-registering');
+      if (_isDCInvalidKey(e)) {
+        debugPrint('[AppAttest] Key invalidated (DCError.invalidKey) — clearing and re-registering');
         await _storage.delete(key: _keyIdStorageKey);
         await _storage.delete(key: _deviceIdStorageKey);
         await _storage.delete(key: 'profile_registered'); // force re-onboarding
@@ -120,6 +119,22 @@ class AppAttestService {
       }
       rethrow;
     }
+  }
+
+  /// Returns true when [e] represents DCError.invalidKey (code 2) from the
+  /// native App Attest channel.  Checks the structured [details] map first
+  /// (set by the Swift channel), then falls back to localizedDescription
+  /// parsing for robustness.
+  bool _isDCInvalidKey(PlatformException e) {
+    if (e.code != 'ASSERTION_FAILED') return false;
+    final details = e.details;
+    if (details is Map) {
+      if (details['domain'] == 'com.apple.devicecheck.error' && details['code'] == 2) {
+        return true;
+      }
+    }
+    // Fallback: localizedDescription on older app versions where details was nil.
+    return e.message?.contains('com.apple.devicecheck.error error 2') == true;
   }
 
   // ─── Private MethodChannel calls ────────────────────────────────────────
@@ -159,16 +174,14 @@ class AppAttestService {
     required String keyId,
     required String challenge,
   }) async {
-    try {
-      final assertion = await _channel.invokeMethod<String>('generateAssertion', {
-        'key_id': keyId,
-        'challenge': challenge,
-      });
-      if (assertion == null) throw Exception('generateAssertion returned null');
-      return assertion;
-    } on PlatformException catch (e) {
-      throw Exception('[AppAttest] generateAssertion failed: ${e.message}');
-    }
+    // Let PlatformException propagate so generateAssertion() can inspect the
+    // error code and trigger transparent re-registration on DCError.invalidKey.
+    final assertion = await _channel.invokeMethod<String>('generateAssertion', {
+      'key_id': keyId,
+      'challenge': challenge,
+    });
+    if (assertion == null) throw Exception('generateAssertion returned null');
+    return assertion;
   }
 
   /// Generate a cryptographically random 32-byte hex challenge (local fallback).

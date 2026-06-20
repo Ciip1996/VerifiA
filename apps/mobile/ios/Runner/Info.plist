@@ -70,13 +70,6 @@
 	<string>VerifiA needs the camera to scan verification QR codes.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>VerifiA uses Face ID to authorize presence verification.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>VerifiA uses the local network to connect Flutter development tools.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_dartVmService._tcp</string>
-		<string>_flutter._tcp</string>
-	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

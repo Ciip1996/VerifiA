@@ -574,8 +574,8 @@ class _LivenessScreenState extends State<LivenessScreen>
   }
 
   Widget _buildOval() {
-    const ovalW = 200.0;
-    const ovalH = 270.0;
+    final ovalW = _isDone ? 240.0 : 200.0;
+    final ovalH = _isDone ? 324.0 : 270.0;
     return SizedBox(
       width: ovalW + 40,
       height: ovalH + 40,

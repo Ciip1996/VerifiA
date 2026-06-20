@@ -522,6 +522,19 @@ function PendingView({
   const statusLabel = { waiting: 'Esperando escaneo del QR…', scanning: 'Verificación en curso…', validating: 'Badge recibido — validando…' }[pollStatus];
   const statusDot = { waiting: 'var(--color-accent)', scanning: '#f59e0b', validating: '#22c55e' }[pollStatus];
 
+  // Stepper state helpers
+  const stepState = (step: 1 | 2 | 3): 'done' | 'active' | 'pending' => {
+    if (pollStatus === 'waiting') return step === 1 ? 'active' : 'pending';
+    if (pollStatus === 'scanning') {
+      if (step === 1) return 'done';
+      if (step === 2) return 'active';
+      return 'pending';
+    }
+    // validating
+    if (step < 3) return 'done';
+    return 'active';
+  };
+
   return (
     <div style={{ textAlign: 'center' }}>
       {/* Hidden canvas for QR PNG download */}
@@ -545,6 +558,44 @@ function PendingView({
         </div>
       )}
 
+      {/* ── Step progress bar ─────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: '1.5rem' }}>
+        {([
+          { step: 1 as const, label: 'Esperando' },
+          { step: 2 as const, label: 'Escaneado' },
+          { step: 3 as const, label: 'Verificando' },
+        ] as const).map(({ step, label }, idx) => {
+          const state = stepState(step);
+          const dotColor = state === 'done' ? '#22c55e' : state === 'active' ? (step === 3 ? '#22c55e' : '#f59e0b') : 'rgba(255,255,255,0.15)';
+          const labelColor = state === 'pending' ? 'rgba(255,255,255,0.3)' : state === 'active' ? (step === 3 ? '#22c55e' : '#f59e0b') : '#22c55e';
+          const connColor = state === 'done' || (idx === 0 && pollStatus !== 'waiting') ? '#22c55e' : 'rgba(255,255,255,0.12)';
+          return (
+            <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
+              {idx > 0 && (
+                <div style={{ width: 32, height: 2, background: connColor, transition: 'background 0.4s ease', margin: '0 4px' }} />
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: dotColor,
+                  border: `2px solid ${state === 'pending' ? 'rgba(255,255,255,0.15)' : dotColor}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.4s ease, border-color 0.4s ease',
+                  animation: state === 'active' ? 'pulse 1.2s ease-in-out infinite' : 'none',
+                  boxShadow: state === 'active' ? `0 0 10px ${dotColor}88` : 'none',
+                }}>
+                  {state === 'done'
+                    ? <span style={{ fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>✓</span>
+                    : <span style={{ fontSize: '0.7rem', color: state === 'pending' ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: 700 }}>{step}</span>
+                  }
+                </div>
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: labelColor, transition: 'color 0.4s ease', whiteSpace: 'nowrap' }}>{label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* QR with SVG countdown ring */}
       <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1.25rem' }}>
         <svg
@@ -567,16 +618,46 @@ function PendingView({
           />
         </svg>
         <div style={{ background: '#fff', padding: '1rem', borderRadius: 12, display: 'inline-block', position: 'relative', zIndex: 1 }}>
-          <QRCodeSVG value={challenge.qr_data} size={220} />
+          {/* QR hidden (not removed) during active states */}
+          <div style={{ visibility: pollStatus !== 'waiting' ? 'hidden' : 'visible' }}>
+            <QRCodeSVG value={challenge.qr_data} size={220} />
+          </div>
+          {/* ── Status card replaces overlay ───────────────────────────── */}
           {pollStatus !== 'waiting' && (
             <div style={{
-              position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.88)',
-              borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: '0.5rem',
+              position: 'absolute', inset: 0,
+              background: pollStatus === 'validating' ? 'rgba(240,253,244,0.97)' : 'rgba(255,251,235,0.97)',
+              borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column', gap: '0.6rem',
             }}>
-              <div style={{ fontSize: '2.5rem' }}>{pollStatus === 'validating' ? '✅' : '📱'}</div>
-              <span style={{ fontSize: '0.8rem', color: '#333', fontWeight: 600 }}>
-                {pollStatus === 'validating' ? 'Validando…' : 'Escaneado'}
+              {/* Spinner arc */}
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                border: `4px solid ${pollStatus === 'validating' ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                borderTopColor: pollStatus === 'validating' ? '#22c55e' : '#f59e0b',
+                animation: 'spin 0.85s linear infinite',
+                flexShrink: 0,
+              }} />
+              {/* Icon */}
+              <div style={{ fontSize: '2rem', lineHeight: 1, marginTop: '-0.25rem' }}>
+                {pollStatus === 'validating' ? '✅' : '📱'}
+              </div>
+              {/* Title */}
+              <span style={{
+                fontSize: '0.95rem', fontWeight: 700,
+                color: pollStatus === 'validating' ? '#15803d' : '#92400e',
+                letterSpacing: '-0.01em',
+              }}>
+                {pollStatus === 'validating' ? 'Badge recibido' : 'QR Escaneado'}
+              </span>
+              {/* Subtitle */}
+              <span style={{
+                fontSize: '0.72rem', fontWeight: 500, textAlign: 'center', lineHeight: 1.4,
+                color: pollStatus === 'validating' ? '#166534' : '#78350f',
+                maxWidth: 160,
+              }}>
+                {pollStatus === 'validating' ? 'Validando credenciales…' : 'Verificando identidad en el dispositivo…'}
               </span>
             </div>
           )}
@@ -589,15 +670,29 @@ function PendingView({
       </div>
 
       {/* Status */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--color-muted)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusDot, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-        {statusLabel}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+        <span style={{
+          width: pollStatus !== 'waiting' ? 10 : 8,
+          height: pollStatus !== 'waiting' ? 10 : 8,
+          borderRadius: '50%', background: statusDot, display: 'inline-block',
+          animation: `pulse ${pollStatus !== 'waiting' ? '0.9s' : '1.5s'} ease-in-out infinite`,
+          boxShadow: pollStatus !== 'waiting' ? `0 0 8px ${statusDot}` : 'none',
+          transition: 'all 0.3s ease',
+        }} />
+        <span style={{
+          color: pollStatus !== 'waiting' ? statusDot : 'var(--color-muted)',
+          fontSize: pollStatus !== 'waiting' ? '0.9rem' : '0.875rem',
+          fontWeight: pollStatus !== 'waiting' ? 700 : 400,
+          transition: 'all 0.3s ease',
+        }}>
+          {statusLabel}
+        </span>
       </div>
 
       {/* Actions */}
       {pollStatus === 'waiting' && (
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-          <button onClick={handleCopy} style={actionBtnStyle(copied ? '#22c55e' : 'rgba(0,234,242,0.15)', copied ? 'rgba(34,197,94,0.4)' : 'rgba(0,234,242,0.4)', copied ? '#22c55e' : 'var(--color-accent)')}>
+          <button onClick={handleCopy} style={actionBtnStyle(copied ? '#22c55e' : 'rgba(0,234,242,0.15)', copied ? 'rgba(34,197,94,0.4)' : 'rgba(0,234,242,0.4)', copied ? '#fff' : 'var(--color-accent)')}>
             {copied ? '✓ Copiado' : '📋 Copiar link'}
           </button>
           {typeof navigator.share === 'function' && (

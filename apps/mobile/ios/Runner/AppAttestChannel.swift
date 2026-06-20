@@ -115,10 +115,11 @@ class AppAttestChannel: NSObject {
         DCAppAttestService.shared.attestKey(keyId, clientDataHash: clientDataHash) { attestation, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    let nsError = error as NSError
                     result(FlutterError(
                         code: "ATTEST_KEY_FAILED",
                         message: error.localizedDescription,
-                        details: nil
+                        details: ["domain": nsError.domain, "code": nsError.code]
                     ))
                     return
                 }
@@ -156,10 +157,11 @@ class AppAttestChannel: NSObject {
         DCAppAttestService.shared.generateAssertion(keyId, clientDataHash: clientDataHash) { assertion, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    let nsError = error as NSError
                     result(FlutterError(
                         code: "ASSERTION_FAILED",
                         message: error.localizedDescription,
-                        details: nil
+                        details: ["domain": nsError.domain, "code": nsError.code]
                     ))
                     return
                 }

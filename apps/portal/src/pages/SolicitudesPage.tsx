@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   rejectChallenge,
   cancelChallenge,
-  getChallengeHistory,
   type IncomingChallenge,
   type ChallengeHistoryItem,
 } from '../api/client.ts';
 import { useInbox } from '../context/InboxContext.tsx';
+import { useSentChanges } from '../context/SentChangesContext.tsx';
 import { IdentityCard, PhotoBox, EmptyPhotoBox } from '../components/IdentityCard.tsx';
 import { PhotoLightbox } from '../components/PhotoLightbox.tsx';
 
@@ -255,40 +255,20 @@ function IncomingCard({ item, onReject, rejecting }: { item: IncomingChallenge; 
 
 // ─── Enviadas tab ─────────────────────────────────────────────────────────────
 
-const POLL_MS = 8000;
-
 function EnviadasTab() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<ChallengeHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Consume items from SentChangesContext — it already polls at 8s, no duplicate needed
+  const { items, loading, refresh } = useSentChanges();
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [detail, setDetail] = useState<ChallengeHistoryItem | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await getChallengeHistory();
-      setItems(res.items);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-    intervalRef.current = setInterval(() => { void load(); }, POLL_MS);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [load]);
 
   async function doCancel(nonce: string) {
     setConfirmCancel(null);
     setCancelling(nonce);
     try {
       await cancelChallenge(nonce);
-      setItems((prev) => prev.map((i) => i.nonce === nonce ? { ...i, status: 'CANCELLED' } : i));
+      await refresh();
     } catch {
       // no-op
     } finally {
@@ -296,7 +276,7 @@ function EnviadasTab() {
     }
   }
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && items.length === 0) return <LoadingSpinner />;
 
   if (items.length === 0) {
     return (
@@ -304,7 +284,7 @@ function EnviadasTab() {
         icon="📤"
         title={t('solicitudes.emptySentTitle')}
         subtitle={t('solicitudes.emptySentSubtitle')}
-        onRefresh={load}
+        onRefresh={refresh}
       />
     );
   }
@@ -323,7 +303,7 @@ function EnviadasTab() {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-        <button onClick={load} style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: '0.82rem' }}>
+        <button onClick={() => void refresh()} disabled={loading} style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-muted)', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: loading ? 0.6 : 1 }}>
           {t('solicitudes.refreshButton')}
         </button>
       </div>

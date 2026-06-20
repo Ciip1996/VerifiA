@@ -38,6 +38,10 @@ export function InboxProvider({ children }: { children: ReactNode }) {
   const consecutiveFailuresRef = useRef(0);
   // Track previous nonces to detect newly arrived items
   const prevNoncesRef = useRef<Set<string>>(new Set());
+  // Refs that mirror state so callbacks don't need them as deps (prevents effect restarts)
+  const seenNoncesRef = useRef<Set<string>>(seenNonces);
+  const itemsRef = useRef<IncomingChallenge[]>(items);
+  seenNoncesRef.current = seenNonces;
 
   const fetchIncoming = useCallback(async () => {
     if (!sessionToken) return;
@@ -49,12 +53,13 @@ export function InboxProvider({ children }: { children: ReactNode }) {
       // Detect newly arrived items (nonces not seen before at all)
       const incoming = res.items;
       const newItem = incoming.find(
-        (i) => !prevNoncesRef.current.has(i.nonce) && !seenNonces.has(i.nonce),
+        (i) => !prevNoncesRef.current.has(i.nonce) && !seenNoncesRef.current.has(i.nonce),
       );
       if (newItem) setLatestNew(newItem);
 
       // Update prev nonces to current full set
       prevNoncesRef.current = new Set(incoming.map((i) => i.nonce));
+      itemsRef.current = incoming;
       setItems(incoming);
     } catch {
       consecutiveFailuresRef.current += 1;
@@ -64,7 +69,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [sessionToken, seenNonces]);
+  }, [sessionToken]); // seenNonces removed — read via ref to prevent effect restarts
 
   useEffect(() => {
     if (!sessionToken) {
@@ -79,13 +84,15 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [sessionToken, fetchIncoming]);
+  }, [sessionToken, fetchIncoming]); // stable: fetchIncoming only changes when sessionToken changes
 
   const unseenCount = items.filter((i) => !seenNonces.has(i.nonce)).length;
 
+  // Uses itemsRef so markAllSeen is stable (no items dep) — prevents SolicitudesPage
+  // useEffect([tab, markAllSeen]) from firing on every fetch and restarting the interval.
   const markAllSeen = useCallback(() => {
-    setSeenNonces(new Set(items.map((i) => i.nonce)));
-  }, [items]);
+    setSeenNonces(new Set(itemsRef.current.map((i) => i.nonce)));
+  }, []); // stable — empty deps
 
   const consumeLatestNew = useCallback(() => {
     setLatestNew(null);

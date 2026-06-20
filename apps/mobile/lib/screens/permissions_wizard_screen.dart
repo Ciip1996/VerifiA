@@ -11,7 +11,7 @@ import '../services/app_attest_service.dart' show AppAttestService;
 import '../services/api_service.dart';
 import '../services/onesignal_service.dart';
 import 'home_screen.dart';
-import 'onboarding_screen.dart';
+import 'login_screen.dart';
 
 class PermissionsWizardScreen extends StatefulWidget {
   const PermissionsWizardScreen({super.key});
@@ -131,7 +131,7 @@ class _PermissionsWizardScreenState extends State<PermissionsWizardScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) =>
-            registered == 'true' ? const HomeScreen() : const OnboardingScreen(),
+            registered == 'true' ? const HomeScreen() : const LoginScreen(),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),

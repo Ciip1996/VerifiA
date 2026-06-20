@@ -7,7 +7,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { getChallengeHistory } from '../api/client.ts';
+import { getChallengeHistory, type ChallengeHistoryItem } from '../api/client.ts';
 import { useAuth } from './AuthContext.tsx';
 
 export interface SentChange {
@@ -18,6 +18,9 @@ export interface SentChange {
 }
 
 interface SentChangesContextValue {
+  items: ChallengeHistoryItem[];
+  loading: boolean;
+  refresh: () => Promise<void>;
   latestChange: SentChange | null;
   consumeLatestChange: () => void;
 }
@@ -28,6 +31,8 @@ const POLL_MS = 8000;
 
 export function SentChangesProvider({ children }: { children: ReactNode }) {
   const { sessionToken } = useAuth();
+  const [items, setItems] = useState<ChallengeHistoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [latestChange, setLatestChange] = useState<SentChange | null>(null);
   // Map nonce → challenge status for previously seen challenges
   const prevStatusRef = useRef<Map<string, string>>(new Map());
@@ -39,6 +44,7 @@ export function SentChangesProvider({ children }: { children: ReactNode }) {
     if (!sessionToken) return;
     try {
       const res = await getChallengeHistory();
+      setItems(res.items);
       for (const item of res.items) {
         const prev = prevStatusRef.current.get(item.nonce);
         const prevToken = prevTokenStatusRef.current.get(item.nonce);
@@ -73,15 +79,19 @@ export function SentChangesProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       // network hiccup — keep polling
+    } finally {
+      setLoading(false);
     }
   }, [sessionToken]);
 
   useEffect(() => {
     if (!sessionToken) {
+      setItems([]);
       prevStatusRef.current.clear();
       prevTokenStatusRef.current.clear();
       return;
     }
+    setLoading(true);
     void poll();
     intervalRef.current = setInterval(() => { void poll(); }, POLL_MS);
     return () => {
@@ -89,12 +99,17 @@ export function SentChangesProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionToken, poll]);
 
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await poll();
+  }, [poll]);
+
   const consumeLatestChange = useCallback(() => {
     setLatestChange(null);
   }, []);
 
   return (
-    <SentChangesContext.Provider value={{ latestChange, consumeLatestChange }}>
+    <SentChangesContext.Provider value={{ items, loading, refresh, latestChange, consumeLatestChange }}>
       {children}
     </SentChangesContext.Provider>
   );
