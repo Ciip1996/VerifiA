@@ -35,15 +35,24 @@ class OneSignalService {
 
   // ── Token registration ────────────────────────────────────────────────────
 
-  /// Observes the push subscription and registers the server-assigned token
-  /// with the VerifiA backend whenever it changes or is first assigned.
+  /// Registers the push subscription's server-assigned token with the
+  /// VerifiA backend, both right now (if one is already assigned — e.g. the
+  /// OneSignal SDK restored a subscription that predates this app launch,
+  /// such as after a reinstall) and on every future change. Relying solely on
+  /// the observer misses the current value: `addObserver` only fires on
+  /// transitions, so if the token is already set by the time we attach it
+  /// (no "change" occurs), the backend never learns about it.
   void _registerBackendTokenOnChange() {
+    _maybeRegisterToken(OneSignal.User.pushSubscription.token);
     OneSignal.User.pushSubscription.addObserver((state) {
-      final token = state.current.token;
-      if (token == null || token.isEmpty) return;
-      final platform = Platform.isIOS ? 'ios' : 'android';
-      ApiService().registerDeviceToken(token, platform);
+      _maybeRegisterToken(state.current.token);
     });
+  }
+
+  void _maybeRegisterToken(String? token) {
+    if (token == null || token.isEmpty) return;
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    ApiService().registerDeviceToken(token, platform);
   }
 
   // ── User identity ─────────────────────────────────────────────────────────

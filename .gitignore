@@ -28,11 +28,6 @@ out/
 .DS_Store
 Thumbs.db
 
-# Prisma
-apps/backend/prisma/migrations/**/migration.sql
-# Keep the migrations directory tracked but not migration lock
-!apps/backend/prisma/migrations/
-
 # Logs
 *.log
 npm-debug.log*
