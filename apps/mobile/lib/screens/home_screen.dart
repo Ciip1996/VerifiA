@@ -16,6 +16,7 @@ import 'login_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'create_challenge_screen.dart';
 import 'incoming_validations_screen.dart';
+import 'receipt_detail_screen.dart';
 import 'user_search_screen.dart';
 import 'verification_detail_screen.dart';
 
@@ -50,12 +51,30 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         OneSignalService().initialize();
         OneSignalService().setupSubscriptionVerification(context);
+        OneSignalService().addClickListener(_onNotificationClick);
         const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
         if (!skipAttest) {
           unawaited(AppAttestService().registerIfNeeded(ApiService()));
         }
       }
     });
+  }
+
+  /// Handles a tapped push notification. When the payload carries a receipt_id
+  /// (a completed verification the sender requested), open the Ticket directly;
+  /// otherwise fall back to surfacing the Activity tab.
+  void _onNotificationClick(dynamic event) {
+    if (!mounted) return;
+    final data = event.notification.additionalData;
+    final receiptId = data is Map ? data['receipt_id'] as String? : null;
+    if (receiptId != null && receiptId.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromId(receiptId)),
+      );
+      return;
+    }
+    setState(() => _tabIndex = 2);
+    _inbox.markAllSeen();
   }
 
   @override

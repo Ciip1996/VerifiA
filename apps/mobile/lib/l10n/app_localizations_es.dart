@@ -73,7 +73,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get homeTabCreateQr => 'Crear QR';
 
   @override
-  String get homeTabInbox => 'Solicitudes';
+  String get homeTabInbox => 'Actividad';
 
   @override
   String get homeTabSearch => 'Buscar';
@@ -596,6 +596,33 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgeCopyJwt => 'Copiar JWT';
 
   @override
+  String get badgeShareTitle => 'Comparte tu constancia';
+
+  @override
+  String get badgeShareSubtitle =>
+      'Una prueba firmada de esta verificación, válida por 30 días.';
+
+  @override
+  String get badgeShareQr => 'Compartir QR';
+
+  @override
+  String get badgeShareLink => 'Compartir enlace';
+
+  @override
+  String get badgeCopyLink => 'Copiar enlace';
+
+  @override
+  String get badgeLinkCopied => 'Enlace copiado al portapapeles';
+
+  @override
+  String get badgeShareMessage =>
+      'Constancia de verificación VerifiA — escanea el QR o abre el enlace para comprobar su autenticidad.';
+
+  @override
+  String get badgeShareError =>
+      'No se pudo compartir la constancia. Intenta de nuevo.';
+
+  @override
   String get profileLogoutTitle => 'Cerrar sesión';
 
   @override
@@ -1077,4 +1104,89 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get scoreInsufficient => 'Insuficiente';
+
+  @override
+  String get receiptTitle => 'Constancia de verificación';
+
+  @override
+  String get receiptStatusValid => 'Verificación auténtica';
+
+  @override
+  String get receiptStatusValidDesc =>
+      'Esta constancia es genuina y está vigente.';
+
+  @override
+  String get receiptStatusExpired => 'La constancia venció';
+
+  @override
+  String get receiptStatusExpiredDesc =>
+      'La verificación sí ocurrió; solo venció el registro de 30 días. No es señal de fraude.';
+
+  @override
+  String get receiptStatusInvalid => 'No se pudo verificar';
+
+  @override
+  String get receiptStatusInvalidDesc =>
+      'La firma no es válida. Este código pudo haber sido manipulado o falsificado.';
+
+  @override
+  String get receiptStatusMalformed => 'Código no reconocido';
+
+  @override
+  String get receiptStatusMalformedDesc =>
+      'Esto no parece una constancia de VerifiA.';
+
+  @override
+  String get receiptStatusNotFound => 'Constancia no encontrada';
+
+  @override
+  String get receiptStatusNotFoundDesc =>
+      'No encontramos esta constancia en el servidor.';
+
+  @override
+  String get receiptOfflineNote =>
+      'Verificado sin conexión. No se pudo confirmar con el servidor.';
+
+  @override
+  String get receiptSubjectLabel => 'Persona verificada';
+
+  @override
+  String get receiptVerifiedAtLabel => 'Verificado el';
+
+  @override
+  String get receiptValidityLabel => 'Validez de la insignia';
+
+  @override
+  String get receiptIdentityTitle => 'Identidad verificada';
+
+  @override
+  String get receiptScoreTitle => 'Coincidencia biométrica';
+
+  @override
+  String get receiptSelfieLabel => 'Selfie de liveness';
+
+  @override
+  String get receiptIdLabel => 'Identificación';
+
+  @override
+  String get receiptScanMe => 'Muéstralo para que lo escaneen';
+
+  @override
+  String get receiptShareQr => 'Compartir';
+
+  @override
+  String get receiptPasteButton => 'Pegar constancia';
+
+  @override
+  String get receiptPasteEmpty =>
+      'No se encontró una constancia válida en el portapapeles.';
+
+  @override
+  String get inboxHistoryTitle => 'Historial';
+
+  @override
+  String get inboxHistoryEmpty => 'Aún no tienes verificaciones completadas.';
+
+  @override
+  String get inboxHistoryViewTicket => 'Ver constancia';
 }

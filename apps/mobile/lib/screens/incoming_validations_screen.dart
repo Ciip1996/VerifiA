@@ -9,6 +9,7 @@ import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
 import '../services/sent_challenges_service.dart';
 import 'presence_challenge_screen.dart';
+import 'receipt_detail_screen.dart';
 import 'verification_detail_screen.dart';
 
 /// Displays pending verification requests (Recibidas) and sent requests (Enviadas).
@@ -53,6 +54,9 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
   final _api = ApiService();
   bool _initialLoad = true;
 
+  List<IncomingHistoryItem> _history = [];
+  bool _historyLoading = true;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -62,6 +66,7 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
     _inbox.addListener(_onInboxUpdate);
     // If service already has data, no longer waiting for initial load.
     if (_inbox.items.isNotEmpty) _initialLoad = false;
+    _loadHistory();
   }
 
   @override
@@ -73,6 +78,31 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
   void _onInboxUpdate() {
     if (!mounted) return;
     setState(() => _initialLoad = false);
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final items = await _api.getIncomingHistory();
+      if (!mounted) return;
+      setState(() {
+        _history = items;
+        _historyLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _historyLoading = false);
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([_inbox.refresh(), _loadHistory()]);
+  }
+
+  void _openHistory(IncomingHistoryItem item) {
+    if (item.receiptId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromId(item.receiptId!)),
+    );
   }
 
   void _open(IncomingChallenge c) {
@@ -123,48 +153,189 @@ class _ReceivedTabState extends State<_ReceivedTab> with AutomaticKeepAliveClien
     super.build(context);
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final items = _inbox.items;
 
-    if (_initialLoad && items.isEmpty) {
+    if (_initialLoad && items.isEmpty && _historyLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.mark_email_unread_outlined, size: 56, color: cs.onSurfaceVariant.withAlpha(128)),
-            const SizedBox(height: 16),
-            Text(l10n.inboxEmptyReceived, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(
-              l10n.inboxEmptyReceivedDesc,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
+    // Pending requests + a "Historial" section of terminal ones (with tap-to-Ticket
+    // when a receipt was issued). Both live in one scroll view so the whole tab
+    // pulls to refresh together.
+    return RefreshIndicator(
+      onRefresh: _refreshAll,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ── Pending ────────────────────────────────────────────────────
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.mark_email_unread_outlined, size: 52, color: cs.onSurfaceVariant.withAlpha(128)),
+                const SizedBox(height: 14),
+                Text(l10n.inboxEmptyReceived, style: tt.titleMedium, textAlign: TextAlign.center),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.inboxEmptyReceivedDesc,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+              ]),
+            )
+          else
+            ...items.map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ReceivedCard(
+                    challenge: c,
+                    isInProgress: c.status == 'IN_PROGRESS',
+                    onVerify: () => _open(c),
+                    onReject: () => _reject(c),
+                  ),
+                )),
+
+          // ── Historial ──────────────────────────────────────────────────
+          const SizedBox(height: 8),
+          Row(children: [
+            Text(l10n.inboxHistoryTitle,
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: cs.onSurfaceVariant)),
           ]),
+          const SizedBox(height: 10),
+          if (_historyLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_history.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.history_rounded, size: 44, color: cs.onSurfaceVariant.withAlpha(110)),
+                const SizedBox(height: 10),
+                Text(
+                  l10n.inboxHistoryEmpty,
+                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+              ]),
+            )
+          else
+            ..._history.map((h) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _HistoryCard(item: h, onTap: () => _openHistory(h)),
+                )),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Historial card (terminal incoming request) ───────────────────────────────
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.item, required this.onTap});
+
+  final IncomingHistoryItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final hasReceipt = item.receiptId != null;
+
+    final (Color chipColor, String chipLabel, IconData chipIcon) = switch (item.status) {
+      'USED'      => (const Color(0xFF2E7D32), l10n.sentStatusUsed,      Icons.check_circle_rounded),
+      'EXPIRED'   => (const Color(0xFF757575), l10n.sentStatusExpired,   Icons.schedule_rounded),
+      'REJECTED'  => (const Color(0xFFC62828), l10n.sentStatusRejected,  Icons.cancel_rounded),
+      'CANCELLED' => (const Color(0xFF757575), l10n.sentStatusCancelled, Icons.block_rounded),
+      _           => (const Color(0xFF757575), item.status,             Icons.info_outline_rounded),
+    };
+
+    final name = item.requesterFullName ?? item.requesterEmail ?? l10n.inboxAnonymousRequest;
+
+    Widget avatar() {
+      if (item.requesterProfilePhoto != null && item.requesterProfilePhoto!.isNotEmpty) {
+        try {
+          return CircleAvatar(
+            radius: 20,
+            backgroundImage: MemoryImage(base64Decode(item.requesterProfilePhoto!)),
+          );
+        } catch (_) {}
+      }
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: cs.surfaceContainerHighest,
+        child: Text(
+          name.substring(0, 1).toUpperCase(),
+          style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.bold),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _inbox.refresh,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final c = items[i];
-          return _ReceivedCard(
-            challenge: c,
-            isInProgress: c.status == 'IN_PROGRESS',
-            onVerify: () => _open(c),
-            onReject: () => _reject(c),
-          );
-        },
+    final card = Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(children: [
+          avatar(),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 3),
+              Text(_fmtDate(item.verifiedAt ?? item.createdAt),
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: chipColor.withAlpha(20),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: chipColor.withAlpha(80)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(chipIcon, size: 12, color: chipColor),
+                const SizedBox(width: 4),
+                Text(chipLabel, style: TextStyle(fontSize: 11, color: chipColor, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+            if (hasReceipt) ...[
+              const SizedBox(height: 6),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.receipt_long_rounded, size: 13, color: cs.primary),
+                const SizedBox(width: 3),
+                Text(l10n.inboxHistoryViewTicket,
+                    style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w600)),
+              ]),
+            ],
+          ]),
+        ]),
       ),
     );
+
+    if (!hasReceipt) return card;
+    return InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: card);
+  }
+
+  String _fmtDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return iso;
+    }
   }
 }
 

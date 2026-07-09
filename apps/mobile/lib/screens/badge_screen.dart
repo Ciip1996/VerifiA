@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../widgets/qr_share.dart';
 
 /// Badge screen — displays the issued JWT badge with a countdown timer.
 /// Also shows a QR of the JWT so the verifier can scan it (optional flow).
@@ -19,6 +21,8 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
   late Timer _timer;
   int _secondsLeft = 0;
   late AnimationController _pulseController;
+  final GlobalKey _shareQrKey = GlobalKey();
+  bool _sharingQr = false;
 
   @override
   void initState() {
@@ -160,8 +164,12 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
 
               const Spacer(),
 
-              // Copy JWT button
-              if (!_isExpired)
+              // Persistent share section — the durable receipt (constancia) can
+              // be shared as a scannable QR image, as a deep link, or copied.
+              if (widget.tokenResponse.receipt != null)
+                _buildShareSection(l10n, widget.tokenResponse.receipt!)
+              else if (!_isExpired)
+                // Fallback (non-P2P badge with no receipt): copy the raw JWT.
                 OutlinedButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: widget.tokenResponse.token));
@@ -180,6 +188,104 @@ class _BadgeScreenState extends State<BadgeScreen> with SingleTickerProviderStat
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildShareSection(AppLocalizations l10n, ReceiptSummary receipt) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.badgeShareTitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.badgeShareSubtitle,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+        ),
+        const SizedBox(height: 14),
+        FilledButton.icon(
+          key: _shareQrKey,
+          onPressed: _sharingQr ? null : () => _shareReceiptQr(l10n, receipt),
+          icon: _sharingQr
+              ? const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.qr_code_2_rounded, size: 18),
+          label: Text(l10n.badgeShareQr),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF00EAF2),
+            foregroundColor: const Color(0xFF06142A),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _shareReceiptLink(receipt),
+              icon: const Icon(Icons.ios_share_rounded, size: 16),
+              label: Text(l10n.badgeShareLink),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Color(0xFF2A2A38)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _copyReceiptLink(l10n, receipt),
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: Text(l10n.badgeCopyLink),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Color(0xFF2A2A38)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Future<void> _shareReceiptQr(AppLocalizations l10n, ReceiptSummary receipt) async {
+    setState(() => _sharingQr = true);
+    final box = _shareQrKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+    final ok = await shareQrPng(
+      context,
+      qrData: receipt.deepLink,
+      text: l10n.badgeShareMessage,
+      sharePositionOrigin: origin,
+    );
+    if (!mounted) return;
+    setState(() => _sharingQr = false);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.badgeShareError)),
+      );
+    }
+  }
+
+  void _shareReceiptLink(ReceiptSummary receipt) {
+    final box = _shareQrKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+    SharePlus.instance.share(
+      ShareParams(text: receipt.deepLink, sharePositionOrigin: origin),
+    );
+  }
+
+  void _copyReceiptLink(AppLocalizations l10n, ReceiptSummary receipt) {
+    Clipboard.setData(ClipboardData(text: receipt.deepLink));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.badgeLinkCopied)),
     );
   }
 

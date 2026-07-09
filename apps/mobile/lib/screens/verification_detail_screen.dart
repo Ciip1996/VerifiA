@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../widgets/identity_media.dart';
 
 /// Full detail view for a completed (USED) sent verification request.
 /// Shows who verified, when, their selfie, their ID photo, and FaceTec score.
@@ -40,31 +40,6 @@ class VerificationDetailScreen extends StatelessWidget {
     };
   }
 
-  /// Opens a full-screen photo viewer with pinch-to-zoom.
-  static void _openPhoto(BuildContext context, Uint8List bytes, String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            title: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          ),
-          body: Center(
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 6.0,
-              child: Image.memory(bytes),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -91,7 +66,7 @@ class VerificationDetailScreen extends StatelessWidget {
                 children: [
                   if (hasSelfie)
                     GestureDetector(
-                      onTap: () => _openPhoto(
+                      onTap: () => openPhoto(
                         context,
                         base64Decode(challenge.subjectPhoto!),
                         l10n.verificationDetailSelfieLabel,
@@ -196,20 +171,19 @@ class VerificationDetailScreen extends StatelessWidget {
                 Text(l10n.verificationDetailBiometricScore, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 score != null
-                    ? _ScoreCard(score: score, cs: cs)
-                    : _ScoreUnavailable(cs: cs),
+                    ? ScoreCard(score: score)
+                    : const ScoreUnavailable(),
                 const SizedBox(height: 16),
 
                 // ── Liveness snapshot ────────────────────────────────────────
                 if (hasSnapshot) ...[
                   Text(l10n.verificationDetailVerifySelfie, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  _TappablePhoto(
+                  TappablePhoto(
                     bytes: base64Decode(challenge.livenessSnapshot!),
                     height: 200,
                     fit: BoxFit.cover,
                     label: l10n.verificationDetailVerifySelfie,
-                    onTap: (bytes) => _openPhoto(context, bytes, l10n.verificationDetailVerifySelfie),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -218,11 +192,10 @@ class VerificationDetailScreen extends StatelessWidget {
                 if (hasIdPhoto) ...[
                   Text(l10n.verificationDetailIdPresented, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  _TappablePhoto(
+                  TappablePhoto(
                     bytes: base64Decode(challenge.subjectIdFrontPhoto!),
                     fit: BoxFit.fitWidth,
                     label: l10n.verificationDetailIdPresented,
-                    onTap: (bytes) => _openPhoto(context, bytes, l10n.verificationDetailIdPresented),
                   ),
                 ],
 
@@ -230,64 +203,6 @@ class VerificationDetailScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Tappable photo with zoom-hint overlay ─────────────────────────────────────
-
-class _TappablePhoto extends StatelessWidget {
-  const _TappablePhoto({
-    required this.bytes,
-    required this.fit,
-    required this.label,
-    required this.onTap,
-    this.height,
-  });
-
-  final Uint8List bytes;
-  final BoxFit fit;
-  final String label;
-  final void Function(Uint8List) onTap;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onTap(bytes),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            Image.memory(
-              bytes,
-              width: double.infinity,
-              height: height,
-              fit: fit,
-            ),
-            // Zoom hint badge in bottom-right corner
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: Builder(builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(140),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
-                    const SizedBox(width: 4),
-                    Text(l10n.seeAction, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ]),
-                );
-              }),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -342,108 +257,3 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _ScoreUnavailable extends StatelessWidget {
-  const _ScoreUnavailable({required this.cs});
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withAlpha(80),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(children: [
-        Icon(Icons.face_retouching_off_rounded, size: 36, color: cs.onSurfaceVariant.withAlpha(120)),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              l10n.verificationDetailScoreUnavailable,
-              style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurfaceVariant, fontSize: 14),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              l10n.verificationDetailScoreUnavailableDesc,
-              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant.withAlpha(180)),
-            ),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({required this.score, required this.cs});
-
-  final int score;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final (Color color, String label) = switch (score) {
-      >= 90 => (const Color(0xFF2E7D32), l10n.scoreExcellent),
-      >= 75 => (const Color(0xFF558B2F), l10n.scoreVeryHigh),
-      >= 60 => (const Color(0xFFF57F17), l10n.scoreAcceptable),
-      >= 40 => (const Color(0xFFE65100), l10n.scoreLow),
-      _     => (const Color(0xFFC62828), l10n.scoreInsufficient),
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withAlpha(15),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withAlpha(60)),
-      ),
-      child: Row(children: [
-        // Score circle with % sign
-        Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withAlpha(25),
-            border: Border.all(color: color, width: 2.5),
-          ),
-          child: Center(
-            child: Text(
-              '$score%',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15)),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: score / 100,
-                minHeight: 6,
-                color: color,
-                backgroundColor: color.withAlpha(30),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.verificationDetailScoreCaption,
-              style: TextStyle(fontSize: 11, color: color.withAlpha(180)),
-            ),
-          ]),
-        ),
-      ]),
-    );
-  }
-}

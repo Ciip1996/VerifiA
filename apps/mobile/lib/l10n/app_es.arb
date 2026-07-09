@@ -61,8 +61,8 @@
   "homeTabCreateQr": "Crear QR",
   "@homeTabCreateQr": { "description": "Navigation tab label for creating a QR challenge" },
 
-  "homeTabInbox": "Solicitudes",
-  "@homeTabInbox": { "description": "Navigation tab label for incoming/sent validations" },
+  "homeTabInbox": "Actividad",
+  "@homeTabInbox": { "description": "Navigation tab label for incoming/sent validations and history" },
 
   "homeTabSearch": "Buscar",
   "@homeTabSearch": { "description": "Navigation tab label for user search" },
@@ -570,6 +570,30 @@
 
   "badgeCopyJwt": "Copiar JWT",
   "@badgeCopyJwt": { "description": "Button to copy the JWT to clipboard" },
+
+  "badgeShareTitle": "Comparte tu constancia",
+  "@badgeShareTitle": { "description": "Title of the receipt share section on the badge screen" },
+
+  "badgeShareSubtitle": "Una prueba firmada de esta verificación, válida por 30 días.",
+  "@badgeShareSubtitle": { "description": "Subtitle explaining the shareable receipt" },
+
+  "badgeShareQr": "Compartir QR",
+  "@badgeShareQr": { "description": "Button to share the receipt as a scannable QR image" },
+
+  "badgeShareLink": "Compartir enlace",
+  "@badgeShareLink": { "description": "Button to share the receipt deep link" },
+
+  "badgeCopyLink": "Copiar enlace",
+  "@badgeCopyLink": { "description": "Button to copy the receipt deep link" },
+
+  "badgeLinkCopied": "Enlace copiado al portapapeles",
+  "@badgeLinkCopied": { "description": "Snackbar shown after the receipt link is copied" },
+
+  "badgeShareMessage": "Constancia de verificación VerifiA — escanea el QR o abre el enlace para comprobar su autenticidad.",
+  "@badgeShareMessage": { "description": "Text included when sharing a receipt" },
+
+  "badgeShareError": "No se pudo compartir la constancia. Intenta de nuevo.",
+  "@badgeShareError": { "description": "Error snackbar when sharing the receipt fails" },
 
   "profileLogoutTitle": "Cerrar sesión",
   "@profileLogoutTitle": { "description": "Dialog title for the logout confirmation" },
@@ -1114,5 +1138,83 @@
   "@scoreLow": { "description": "Score label for 40-59 match on verification detail screen" },
 
   "scoreInsufficient": "Insuficiente",
-  "@scoreInsufficient": { "description": "Score label for below 40 match on verification detail screen" }
+  "@scoreInsufficient": { "description": "Score label for below 40 match on verification detail screen" },
+
+  "receiptTitle": "Constancia de verificación",
+  "@receiptTitle": { "description": "App bar title on the receipt (ticket) screen" },
+
+  "receiptStatusValid": "Verificación auténtica",
+  "@receiptStatusValid": { "description": "Ticket status banner title when the receipt is valid" },
+
+  "receiptStatusValidDesc": "Esta constancia es genuina y está vigente.",
+  "@receiptStatusValidDesc": { "description": "Ticket status banner description when valid" },
+
+  "receiptStatusExpired": "La constancia venció",
+  "@receiptStatusExpired": { "description": "Ticket status banner title when the receipt is expired" },
+
+  "receiptStatusExpiredDesc": "La verificación sí ocurrió; solo venció el registro de 30 días. No es señal de fraude.",
+  "@receiptStatusExpiredDesc": { "description": "Ticket status banner description when expired (verification really happened)" },
+
+  "receiptStatusInvalid": "No se pudo verificar",
+  "@receiptStatusInvalid": { "description": "Ticket status banner title when the signature is invalid" },
+
+  "receiptStatusInvalidDesc": "La firma no es válida. Este código pudo haber sido manipulado o falsificado.",
+  "@receiptStatusInvalidDesc": { "description": "Ticket status banner description when invalid (possible tampering)" },
+
+  "receiptStatusMalformed": "Código no reconocido",
+  "@receiptStatusMalformed": { "description": "Ticket status banner title when the input is not a receipt" },
+
+  "receiptStatusMalformedDesc": "Esto no parece una constancia de VerifiA.",
+  "@receiptStatusMalformedDesc": { "description": "Ticket status banner description when malformed" },
+
+  "receiptStatusNotFound": "Constancia no encontrada",
+  "@receiptStatusNotFound": { "description": "Ticket status banner title when the receipt id is unknown" },
+
+  "receiptStatusNotFoundDesc": "No encontramos esta constancia en el servidor.",
+  "@receiptStatusNotFoundDesc": { "description": "Ticket status banner description when not found" },
+
+  "receiptOfflineNote": "Verificado sin conexión. No se pudo confirmar con el servidor.",
+  "@receiptOfflineNote": { "description": "Note shown when only the offline signature check succeeded" },
+
+  "receiptSubjectLabel": "Persona verificada",
+  "@receiptSubjectLabel": { "description": "Label for the verified subject name on the ticket" },
+
+  "receiptVerifiedAtLabel": "Verificado el",
+  "@receiptVerifiedAtLabel": { "description": "Label for the verification timestamp on the ticket" },
+
+  "receiptValidityLabel": "Validez de la insignia",
+  "@receiptValidityLabel": { "description": "Label for the badge validity window on the ticket" },
+
+  "receiptIdentityTitle": "Identidad verificada",
+  "@receiptIdentityTitle": { "description": "Section title for the owner-only identity block on the ticket" },
+
+  "receiptScoreTitle": "Coincidencia biométrica",
+  "@receiptScoreTitle": { "description": "Section title for the FaceTec score on the ticket" },
+
+  "receiptSelfieLabel": "Selfie de liveness",
+  "@receiptSelfieLabel": { "description": "Label for the liveness selfie photo on the ticket" },
+
+  "receiptIdLabel": "Identificación",
+  "@receiptIdLabel": { "description": "Label for the ID photo on the ticket" },
+
+  "receiptScanMe": "Muéstralo para que lo escaneen",
+  "@receiptScanMe": { "description": "Caption above the scannable receipt QR on the ticket" },
+
+  "receiptShareQr": "Compartir",
+  "@receiptShareQr": { "description": "Button to share the receipt from the ticket screen" },
+
+  "receiptPasteButton": "Pegar constancia",
+  "@receiptPasteButton": { "description": "Button on the scanner to paste a receipt link/JWT from the clipboard" },
+
+  "receiptPasteEmpty": "No se encontró una constancia válida en el portapapeles.",
+  "@receiptPasteEmpty": { "description": "Snackbar when the clipboard has no valid receipt" },
+
+  "inboxHistoryTitle": "Historial",
+  "@inboxHistoryTitle": { "description": "Section header for terminal (completed) received requests" },
+
+  "inboxHistoryEmpty": "Aún no tienes verificaciones completadas.",
+  "@inboxHistoryEmpty": { "description": "Empty state for the received-history section" },
+
+  "inboxHistoryViewTicket": "Ver constancia",
+  "@inboxHistoryViewTicket": { "description": "Affordance on a history card that has a linked receipt" }
 }

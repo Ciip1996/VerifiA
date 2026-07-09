@@ -8,6 +8,7 @@ import { verifyAppAttestAssertion } from '../services/app-attest.js';
 import { verifyFaceTecSession } from '../services/facetec.js';
 import { verifyPasskeyAssertion } from '../services/passkeys.js';
 import { pushToAccount } from '../services/push.js';
+import { issueReceipt } from '../services/receipts.js';
 
 export const tokensRouter = Router();
 
@@ -138,20 +139,39 @@ tokensRouter.post('/issue', async (req, res, next) => {
       device_id,
     });
 
+    // In the P2P (mobile-to-mobile) flow the badge is consumed at issuance —
+    // there is no separate portal /validate step. Mark the Token USED immediately
+    // so a third party who knows the nonce + requester email cannot re-consume it
+    // via /tokens/validate (which checks status === 'USED' before aud).
+    const isP2P = !!challenge.account_id;
+
     // 9. Persist token record (including identity link + liveness snapshot + 3D-3D score)
-    await prisma.token.create({
+    const token = await prisma.token.create({
       data: {
         jti,
         nonce,
         aud: challenge.verifier_id,
         exp,
-        status: 'ACTIVE',
+        status: isP2P ? 'USED' : 'ACTIVE',
         jwt_raw: jwt,
         device_id,
         liveness_snapshot: facetec_audit_trail_image ?? facetec_face_scan ?? null,
         liveness_match_score: liveness_match_score ?? null,
       },
     });
+
+    // Issue a durable, shareable verification receipt for the P2P flow.
+    // Idempotent (unique on challenge_nonce), so safe even if re-invoked.
+    let receipt: { id: string; jwt: string; deep_link: string } | null = null;
+    if (isP2P) {
+      try {
+        const r = await issueReceipt({ challenge, token, issuedVia: 'issue' });
+        receipt = { id: r.receiptId, jwt: r.jwt, deep_link: r.deepLink };
+      } catch (receiptErr) {
+        // Receipt issuance is best-effort — never fail badge issuance over it.
+        console.warn('[tokens/issue] receipt issuance failed:', receiptErr);
+      }
+    }
 
     // 10. Audit log
     await prisma.auditLog.create({
@@ -174,7 +194,11 @@ tokensRouter.post('/issue', async (req, res, next) => {
       pushToAccount(challenge.account_id, {
         title: '✅ Verificación completada',
         body: `${verifierName} completó tu solicitud de verificación.`,
-        data: { type: 'CHALLENGE_USED', nonce },
+        data: {
+          type: 'CHALLENGE_USED',
+          nonce,
+          ...(receipt ? { receipt_id: receipt.id } : {}),
+        },
       }).catch(() => {});
     }
 
@@ -190,6 +214,7 @@ tokensRouter.post('/issue', async (req, res, next) => {
         issued_at: new Date().toISOString(),
         expires_at: exp.toISOString(),
       },
+      receipt,
     });
   } catch (err) {
     next(err);
@@ -294,6 +319,19 @@ tokensRouter.post('/validate/:nonce', async (req, res, next) => {
       },
     });
 
+    // Issue a durable verification receipt for the portal/API-key flow too.
+    // Shares the single idempotent issueReceipt helper (unique on challenge_nonce).
+    let receipt: { id: string; jwt: string; deep_link: string } | null = null;
+    const challenge = await prisma.challenge.findUnique({ where: { nonce } });
+    if (challenge) {
+      try {
+        const r = await issueReceipt({ challenge, token, issuedVia: 'validate' });
+        receipt = { id: r.receiptId, jwt: r.jwt, deep_link: r.deepLink };
+      } catch (receiptErr) {
+        console.warn('[tokens/validate] receipt issuance failed:', receiptErr);
+      }
+    }
+
     // Look up user identity profile if token has a device_id
     let identity = null;
     if (token.device_id) {
@@ -327,6 +365,7 @@ tokensRouter.post('/validate/:nonce', async (req, res, next) => {
         expires_at: token.exp.toISOString(),
       },
       identity,
+      receipt,
     });
   } catch (err) {
     next(err);

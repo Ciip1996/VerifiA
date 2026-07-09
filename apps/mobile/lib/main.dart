@@ -14,6 +14,7 @@ import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/permissions_wizard_screen.dart';
 import 'screens/presence_challenge_screen.dart';
+import 'screens/receipt_detail_screen.dart';
 import 'services/app_attest_service.dart' show AppAttestService;
 import 'services/api_service.dart';
 // Global navigator key so deep link handler can push routes from outside widget tree
@@ -45,26 +46,35 @@ Future<void> _initAppAttest() async {
   }
 }
 
-// Parses verifia://badge?nonce=<hex64>&verifier=<id> and pushes PresenceChallengeScreen
+// Routes verifia:// deep links:
+//   verifia://badge?nonce=<hex64>&verifier=<id>  → PresenceChallengeScreen
+//   verifia://receipt?jwt=<receipt-jwt>          → ReceiptDetailScreen (Ticket)
 void _handleDeepLink(Uri uri) {
-  if (uri.scheme != 'verifia' || uri.host != 'badge') return;
-  final nonce = uri.queryParameters['nonce'];
-  if (nonce == null || nonce.length != 64) return;
-  final verifierId = uri.queryParameters['verifier'] ?? 'Verificador';
-
+  if (uri.scheme != 'verifia') return;
   final navigator = _navigatorKey.currentState;
   if (navigator == null) return;
 
-  // Pop back to root (QRScannerScreen) then push the challenge screen
-  navigator.popUntil((route) => route.isFirst);
-  navigator.push(
-    MaterialPageRoute(
-      builder: (_) => PresenceChallengeScreen(
-        nonce: nonce,
-        verifierId: verifierId,
+  if (uri.host == 'badge') {
+    final nonce = uri.queryParameters['nonce'];
+    if (nonce == null || nonce.length != 64) return;
+    final verifierId = uri.queryParameters['verifier'] ?? 'Verificador';
+    navigator.popUntil((route) => route.isFirst);
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => PresenceChallengeScreen(nonce: nonce, verifierId: verifierId),
       ),
-    ),
-  );
+    );
+    return;
+  }
+
+  if (uri.host == 'receipt') {
+    final jwt = uri.queryParameters['jwt'];
+    if (jwt == null || jwt.isEmpty) return;
+    navigator.push(
+      MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromJwt(jwt)),
+    );
+    return;
+  }
 }
 
 class VerifiAApp extends StatefulWidget {

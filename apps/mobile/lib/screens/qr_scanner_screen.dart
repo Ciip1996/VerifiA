@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../l10n/app_localizations.dart';
 import 'presence_challenge_screen.dart';
+import 'receipt_detail_screen.dart';
 
 /// QR scanner screen — entry point of the holder flow.
 /// Scans a verifia://badge?nonce=... QR code from the verifier portal.
@@ -98,40 +100,72 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     final rawValue = barcode.rawValue;
     if (rawValue == null) return;
 
-    final qrData = _extractQRData(rawValue);
-    if (qrData == null) return;
+    final route = _routeForQr(rawValue);
+    if (route == null) return;
 
     setState(() => _processing = true);
     _safeStop();
 
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => PresenceChallengeScreen(
-              nonce: qrData.nonce,
-              verifierId: qrData.verifierId,
-            ),
-          ),
-        )
-        .then((_) {
-          if (!mounted) return;
-          setState(() => _processing = false);
-          _safeStart();
-        });
+    Navigator.of(context).push(route).then((_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      _safeStart();
+    });
   }
 
-  /// Parses nonce and verifier_id from verifia://badge?nonce=<hex64>&verifier=<id>
-  ({String nonce, String verifierId})? _extractQRData(String raw) {
+  /// Builds a route for a scanned verifia:// QR:
+  ///   verifia://badge?nonce=…    → PresenceChallengeScreen
+  ///   verifia://receipt?jwt=…    → ReceiptDetailScreen (Ticket)
+  MaterialPageRoute<void>? _routeForQr(String raw) {
     try {
       final uri = Uri.parse(raw);
-      if (uri.scheme != 'verifia' || uri.host != 'badge') return null;
-      final nonce = uri.queryParameters['nonce'];
-      if (nonce == null || nonce.length != 64) return null;
-      final verifierId = uri.queryParameters['verifier'] ?? 'Verificador';
-      return (nonce: nonce, verifierId: verifierId);
+      if (uri.scheme != 'verifia') return null;
+      if (uri.host == 'badge') {
+        final nonce = uri.queryParameters['nonce'];
+        if (nonce == null || nonce.length != 64) return null;
+        final verifierId = uri.queryParameters['verifier'] ?? 'Verificador';
+        return MaterialPageRoute(
+          builder: (_) => PresenceChallengeScreen(nonce: nonce, verifierId: verifierId),
+        );
+      }
+      if (uri.host == 'receipt') {
+        final jwt = uri.queryParameters['jwt'];
+        if (jwt == null || jwt.isEmpty) return null;
+        return MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromJwt(jwt));
+      }
+      return null;
     } catch (_) {
       return null;
     }
+  }
+
+  /// Paste-a-receipt fallback: reads the clipboard, extracts a receipt JWT from a
+  /// verifia://receipt?jwt=… link (or a bare JWT), and opens the Ticket screen.
+  Future<void> _pasteReceipt() async {
+    final l10n = AppLocalizations.of(context)!;
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    String? jwt;
+    if (text.isNotEmpty) {
+      final uri = Uri.tryParse(text);
+      if (uri != null && uri.scheme == 'verifia' && uri.host == 'receipt') {
+        jwt = uri.queryParameters['jwt'];
+      } else if (text.split('.').length == 3) {
+        jwt = text; // bare JWT
+      }
+    }
+    if (!mounted) return;
+    if (jwt == null || jwt.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.receiptPasteEmpty)),
+      );
+      return;
+    }
+    _safeStop();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromJwt(jwt!)),
+    );
+    if (mounted) _safeStart();
   }
 
   @override
@@ -222,16 +256,35 @@ class _QRScannerScreenState extends State<QRScannerScreen>
             bottom: 48,
             left: 24,
             right: 24,
-            child: IgnorePointer(
-              child: Text(
-                l10n.scannerInstruction,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 16,
-                  shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IgnorePointer(
+                  child: Text(
+                    l10n.scannerInstruction,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 16,
+                      shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: _pasteReceipt,
+                  icon: const Icon(Icons.content_paste_rounded, size: 16, color: Colors.white),
+                  label: Text(
+                    l10n.receiptPasteButton,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  ),
+                ),
+              ],
             ),
           ),
           if (_processing)

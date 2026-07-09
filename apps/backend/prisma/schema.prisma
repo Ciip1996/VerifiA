@@ -156,6 +156,34 @@ model PasskeyRegistrationChallenge {
   @@map("passkey_registration_challenges")
 }
 
+// ─── VerificationReceipt ──────────────────────────────────────────────────
+// Non-consuming, shareable proof that a badge verification took place.
+// Issued whenever a badge completes (both the P2P mobile flow via /tokens/issue
+// and the portal/API-key flow via /tokens/validate). Unlike the badge Token
+// (single-use, ~5 min TTL), the receipt is a durable ~30-day record signed with
+// the same ES256 keypair (distinguished by a `purpose: verification_receipt` claim).
+model VerificationReceipt {
+  id                String   @id @default(cuid())
+  jti               String   @unique                 // receipt JWT ID (replay/lookup key)
+  challenge_nonce   String   @unique                 // idempotency: one receipt per challenge
+  badge_jti         String                           // the badge Token.jti this attests to
+  account_id        String?                          // Account of the verified subject (P2P), null for API-key
+  device_id         String?                          // links receipt → UserProfile (identity tier)
+  subject_name      String?                          // display name only (no photos); owner/JWT-holder tier
+  issued_via        String                           // "issue" (P2P) | "validate" (portal) — audit origin
+  verified_at       DateTime                         // when the verification actually happened
+  badge_valid_from  DateTime                         // badge iat
+  badge_valid_until DateTime                         // badge exp
+  expires_at        DateTime                         // receipt TTL (default 30 days)
+  receipt_jwt_raw   String   @db.Text                // full signed receipt JWT
+
+  created_at DateTime @default(now())
+
+  @@index([account_id])
+  @@index([badge_jti])
+  @@map("verification_receipts")
+}
+
 // ─── AuditLog ─────────────────────────────────────────────────────────────
 // Immutable audit trail for all security-relevant events.
 model AuditLog {

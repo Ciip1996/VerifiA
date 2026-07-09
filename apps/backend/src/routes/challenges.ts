@@ -459,3 +459,84 @@ challengesRouter.get('/incoming', requireAccount, async (req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * GET /api/v1/challenges/incoming/history
+ * Returns terminal (non-pending) challenges that were targeted at the
+ * authenticated account's email — i.e. verification requests they already
+ * responded to. Mirrors the /incoming shape but includes completed states and
+ * a linked receipt_id when one was issued (so the app can open the Ticket).
+ */
+challengesRouter.get('/incoming/history', requireAccount, async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page as string ?? '1', 10);
+    const limit = Math.min(parseInt(req.query.limit as string ?? '20', 10), 50);
+    const skip = (page - 1) * limit;
+
+    const challenges = await prisma.challenge.findMany({
+      where: {
+        target_email: req.account!.email,
+        status: { notIn: ['PENDING', 'IN_PROGRESS'] },
+      },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take: limit,
+    });
+
+    // Requester (sender) info for display.
+    const accountIds = challenges
+      .map(c => c.account_id)
+      .filter((id): id is string => id !== null);
+    const requesters = accountIds.length > 0
+      ? await prisma.account.findMany({
+          where: { id: { in: accountIds } },
+          select: { id: true, email: true, device_id: true },
+        })
+      : [];
+    const requesterProfiles = requesters.length > 0
+      ? await prisma.userProfile.findMany({
+          where: { device_id: { in: requesters.map(r => r.device_id) } },
+          select: { device_id: true, full_name: true, profile_photo: true },
+        })
+      : [];
+    const profileByDevice = Object.fromEntries(requesterProfiles.map(p => [p.device_id, p]));
+    const requesterById = Object.fromEntries(requesters.map(r => [r.id, r]));
+
+    // Linked receipts by challenge nonce.
+    const nonces = challenges.map(c => c.nonce);
+    const receipts = nonces.length > 0
+      ? await prisma.verificationReceipt.findMany({
+          where: { challenge_nonce: { in: nonces } },
+          select: { id: true, challenge_nonce: true, verified_at: true },
+        })
+      : [];
+    const receiptByNonce = Object.fromEntries(receipts.map(r => [r.challenge_nonce, r]));
+
+    const items = challenges.map(c => {
+      const requester = c.account_id ? requesterById[c.account_id] : null;
+      const profile = requester ? profileByDevice[requester.device_id] : null;
+      const receipt = receiptByNonce[c.nonce];
+      return {
+        nonce: c.nonce,
+        status: c.status,
+        verifier_id: c.verifier_id,
+        rejection_reason: c.rejection_reason,
+        created_at: c.created_at.toISOString(),
+        expires_at: c.exp_time.toISOString(),
+        requester: requester
+          ? {
+              email: requester.email,
+              full_name: profile?.full_name ?? null,
+              profile_photo: profile?.profile_photo ?? null,
+            }
+          : null,
+        receipt_id: receipt?.id ?? null,
+        verified_at: receipt?.verified_at.toISOString() ?? null,
+      };
+    });
+
+    res.json({ items, page, limit });
+  } catch (err) {
+    next(err);
+  }
+});

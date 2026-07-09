@@ -218,10 +218,10 @@ abstract class AppLocalizations {
   /// **'Crear QR'**
   String get homeTabCreateQr;
 
-  /// Navigation tab label for incoming/sent validations
+  /// Navigation tab label for incoming/sent validations and history
   ///
   /// In es, this message translates to:
-  /// **'Solicitudes'**
+  /// **'Actividad'**
   String get homeTabInbox;
 
   /// Navigation tab label for user search
@@ -1148,6 +1148,54 @@ abstract class AppLocalizations {
   /// **'Copiar JWT'**
   String get badgeCopyJwt;
 
+  /// Title of the receipt share section on the badge screen
+  ///
+  /// In es, this message translates to:
+  /// **'Comparte tu constancia'**
+  String get badgeShareTitle;
+
+  /// Subtitle explaining the shareable receipt
+  ///
+  /// In es, this message translates to:
+  /// **'Una prueba firmada de esta verificación, válida por 30 días.'**
+  String get badgeShareSubtitle;
+
+  /// Button to share the receipt as a scannable QR image
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir QR'**
+  String get badgeShareQr;
+
+  /// Button to share the receipt deep link
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir enlace'**
+  String get badgeShareLink;
+
+  /// Button to copy the receipt deep link
+  ///
+  /// In es, this message translates to:
+  /// **'Copiar enlace'**
+  String get badgeCopyLink;
+
+  /// Snackbar shown after the receipt link is copied
+  ///
+  /// In es, this message translates to:
+  /// **'Enlace copiado al portapapeles'**
+  String get badgeLinkCopied;
+
+  /// Text included when sharing a receipt
+  ///
+  /// In es, this message translates to:
+  /// **'Constancia de verificación VerifiA — escanea el QR o abre el enlace para comprobar su autenticidad.'**
+  String get badgeShareMessage;
+
+  /// Error snackbar when sharing the receipt fails
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo compartir la constancia. Intenta de nuevo.'**
+  String get badgeShareError;
+
   /// Dialog title for the logout confirmation
   ///
   /// In es, this message translates to:
@@ -2065,6 +2113,162 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Insuficiente'**
   String get scoreInsufficient;
+
+  /// App bar title on the receipt (ticket) screen
+  ///
+  /// In es, this message translates to:
+  /// **'Constancia de verificación'**
+  String get receiptTitle;
+
+  /// Ticket status banner title when the receipt is valid
+  ///
+  /// In es, this message translates to:
+  /// **'Verificación auténtica'**
+  String get receiptStatusValid;
+
+  /// Ticket status banner description when valid
+  ///
+  /// In es, this message translates to:
+  /// **'Esta constancia es genuina y está vigente.'**
+  String get receiptStatusValidDesc;
+
+  /// Ticket status banner title when the receipt is expired
+  ///
+  /// In es, this message translates to:
+  /// **'La constancia venció'**
+  String get receiptStatusExpired;
+
+  /// Ticket status banner description when expired (verification really happened)
+  ///
+  /// In es, this message translates to:
+  /// **'La verificación sí ocurrió; solo venció el registro de 30 días. No es señal de fraude.'**
+  String get receiptStatusExpiredDesc;
+
+  /// Ticket status banner title when the signature is invalid
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo verificar'**
+  String get receiptStatusInvalid;
+
+  /// Ticket status banner description when invalid (possible tampering)
+  ///
+  /// In es, this message translates to:
+  /// **'La firma no es válida. Este código pudo haber sido manipulado o falsificado.'**
+  String get receiptStatusInvalidDesc;
+
+  /// Ticket status banner title when the input is not a receipt
+  ///
+  /// In es, this message translates to:
+  /// **'Código no reconocido'**
+  String get receiptStatusMalformed;
+
+  /// Ticket status banner description when malformed
+  ///
+  /// In es, this message translates to:
+  /// **'Esto no parece una constancia de VerifiA.'**
+  String get receiptStatusMalformedDesc;
+
+  /// Ticket status banner title when the receipt id is unknown
+  ///
+  /// In es, this message translates to:
+  /// **'Constancia no encontrada'**
+  String get receiptStatusNotFound;
+
+  /// Ticket status banner description when not found
+  ///
+  /// In es, this message translates to:
+  /// **'No encontramos esta constancia en el servidor.'**
+  String get receiptStatusNotFoundDesc;
+
+  /// Note shown when only the offline signature check succeeded
+  ///
+  /// In es, this message translates to:
+  /// **'Verificado sin conexión. No se pudo confirmar con el servidor.'**
+  String get receiptOfflineNote;
+
+  /// Label for the verified subject name on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Persona verificada'**
+  String get receiptSubjectLabel;
+
+  /// Label for the verification timestamp on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Verificado el'**
+  String get receiptVerifiedAtLabel;
+
+  /// Label for the badge validity window on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Validez de la insignia'**
+  String get receiptValidityLabel;
+
+  /// Section title for the owner-only identity block on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Identidad verificada'**
+  String get receiptIdentityTitle;
+
+  /// Section title for the FaceTec score on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Coincidencia biométrica'**
+  String get receiptScoreTitle;
+
+  /// Label for the liveness selfie photo on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Selfie de liveness'**
+  String get receiptSelfieLabel;
+
+  /// Label for the ID photo on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Identificación'**
+  String get receiptIdLabel;
+
+  /// Caption above the scannable receipt QR on the ticket
+  ///
+  /// In es, this message translates to:
+  /// **'Muéstralo para que lo escaneen'**
+  String get receiptScanMe;
+
+  /// Button to share the receipt from the ticket screen
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir'**
+  String get receiptShareQr;
+
+  /// Button on the scanner to paste a receipt link/JWT from the clipboard
+  ///
+  /// In es, this message translates to:
+  /// **'Pegar constancia'**
+  String get receiptPasteButton;
+
+  /// Snackbar when the clipboard has no valid receipt
+  ///
+  /// In es, this message translates to:
+  /// **'No se encontró una constancia válida en el portapapeles.'**
+  String get receiptPasteEmpty;
+
+  /// Section header for terminal (completed) received requests
+  ///
+  /// In es, this message translates to:
+  /// **'Historial'**
+  String get inboxHistoryTitle;
+
+  /// Empty state for the received-history section
+  ///
+  /// In es, this message translates to:
+  /// **'Aún no tienes verificaciones completadas.'**
+  String get inboxHistoryEmpty;
+
+  /// Affordance on a history card that has a linked receipt
+  ///
+  /// In es, this message translates to:
+  /// **'Ver constancia'**
+  String get inboxHistoryViewTicket;
 }
 
 class _AppLocalizationsDelegate

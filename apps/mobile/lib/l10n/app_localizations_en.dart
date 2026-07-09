@@ -72,7 +72,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTabCreateQr => 'Create QR';
 
   @override
-  String get homeTabInbox => 'Requests';
+  String get homeTabInbox => 'Activity';
 
   @override
   String get homeTabSearch => 'Search';
@@ -593,6 +593,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgeCopyJwt => 'Copy JWT';
 
   @override
+  String get badgeShareTitle => 'Share your receipt';
+
+  @override
+  String get badgeShareSubtitle =>
+      'A signed proof of this verification, valid for 30 days.';
+
+  @override
+  String get badgeShareQr => 'Share QR';
+
+  @override
+  String get badgeShareLink => 'Share link';
+
+  @override
+  String get badgeCopyLink => 'Copy link';
+
+  @override
+  String get badgeLinkCopied => 'Link copied to clipboard';
+
+  @override
+  String get badgeShareMessage =>
+      'VerifiA verification receipt — scan the QR or open the link to check its authenticity.';
+
+  @override
+  String get badgeShareError =>
+      'Couldn\'t share the receipt. Please try again.';
+
+  @override
   String get profileLogoutTitle => 'Sign out';
 
   @override
@@ -1073,4 +1100,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoreInsufficient => 'Insufficient';
+
+  @override
+  String get receiptTitle => 'Verification receipt';
+
+  @override
+  String get receiptStatusValid => 'Authentic verification';
+
+  @override
+  String get receiptStatusValidDesc =>
+      'This receipt is genuine and currently valid.';
+
+  @override
+  String get receiptStatusExpired => 'Receipt expired';
+
+  @override
+  String get receiptStatusExpiredDesc =>
+      'The verification did happen; only the 30-day record lapsed. This is not a sign of fraud.';
+
+  @override
+  String get receiptStatusInvalid => 'Could not verify';
+
+  @override
+  String get receiptStatusInvalidDesc =>
+      'The signature is invalid. This code may have been tampered with or forged.';
+
+  @override
+  String get receiptStatusMalformed => 'Unrecognized code';
+
+  @override
+  String get receiptStatusMalformedDesc =>
+      'This doesn\'t look like a VerifiA receipt.';
+
+  @override
+  String get receiptStatusNotFound => 'Receipt not found';
+
+  @override
+  String get receiptStatusNotFoundDesc =>
+      'We couldn\'t find this receipt on the server.';
+
+  @override
+  String get receiptOfflineNote =>
+      'Verified offline. Couldn\'t confirm with the server.';
+
+  @override
+  String get receiptSubjectLabel => 'Verified person';
+
+  @override
+  String get receiptVerifiedAtLabel => 'Verified on';
+
+  @override
+  String get receiptValidityLabel => 'Badge validity';
+
+  @override
+  String get receiptIdentityTitle => 'Verified identity';
+
+  @override
+  String get receiptScoreTitle => 'Biometric match';
+
+  @override
+  String get receiptSelfieLabel => 'Liveness selfie';
+
+  @override
+  String get receiptIdLabel => 'ID document';
+
+  @override
+  String get receiptScanMe => 'Show it to be scanned';
+
+  @override
+  String get receiptShareQr => 'Share';
+
+  @override
+  String get receiptPasteButton => 'Paste receipt';
+
+  @override
+  String get receiptPasteEmpty => 'No valid receipt found in the clipboard.';
+
+  @override
+  String get inboxHistoryTitle => 'History';
+
+  @override
+  String get inboxHistoryEmpty =>
+      'You don\'t have any completed verifications yet.';
+
+  @override
+  String get inboxHistoryViewTicket => 'View receipt';
 }

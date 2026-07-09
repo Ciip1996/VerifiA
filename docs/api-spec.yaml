@@ -29,6 +29,8 @@ tags:
     description: Registro y validación de dispositivos Apple
   - name: Tokens
     description: Emisión y validación de tokens de presencia
+  - name: Receipts
+    description: Recibos de verificación firmados (constancias compartibles, TTL ~30 días)
 
 paths:
   /api/v1/challenges:
@@ -182,6 +184,104 @@ paths:
         '410':
           description: Token expirado
 
+  /api/v1/challenges/incoming/history:
+    get:
+      tags: [Challenges]
+      summary: Historial de solicitudes recibidas (terminales)
+      description: |
+        Devuelve las solicitudes de verificación dirigidas al correo de la cuenta
+        autenticada que ya alcanzaron un estado terminal (USED / EXPIRED / REJECTED /
+        CANCELLED). Incluye `receipt_id` cuando se emitió un recibo, para abrir el Ticket.
+        Requiere sesión Bearer.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        '200':
+          description: Historial de solicitudes recibidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomingHistoryResponse'
+        '401':
+          description: Sesión inválida o ausente
+
+  /api/v1/receipts/{id}:
+    get:
+      tags: [Receipts]
+      summary: Consultar recibo por id (no destructivo)
+      description: |
+        Búsqueda por id opaco (cuid), sin prueba de posesión del JWT del recibo.
+        Devuelve **solo** el subconjunto público: `valid`, `status`, `verified_at`,
+        `badge_valid_from`, `badge_valid_until`. **Nunca** incluye `subject_name` ni
+        `nonce` en este nivel. Si el llamador es el dueño autenticado (Bearer cuya
+        cuenta coincide con `account_id`), añade `subject_name` y el bloque `identity`.
+        Rate limit dedicado (más estricto que el global).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - BearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: Estado del recibo (subconjunto según autenticación)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptStatusResponse'
+        '404':
+          description: Recibo no encontrado
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/v1/receipts/verify:
+    post:
+      tags: [Receipts]
+      summary: Verificar recibo por JWT completo
+      description: |
+        Verifica firma ES256 + propósito + expiración del JWT del recibo, y confirma
+        que la fila sigue existiendo. No muta estado. Como el llamador envía el JWT
+        firmado completo (prueba de posesión), es seguro devolver `subject_name`. El
+        bloque `identity` sigue restringido al dueño autenticado.
+
+        Distingue **expirado** (la verificación sí ocurrió, solo venció la constancia
+        de 30 días → `status: EXPIRED`) de **inválido** (firma mala / manipulado →
+        `status: INVALID`).
+      security:
+        - BearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_jwt]
+              properties:
+                receipt_jwt:
+                  type: string
+                  description: JWT del recibo (verifia://receipt?jwt=...)
+      responses:
+        '200':
+          description: Resultado de verificación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptStatusResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
   /health:
     get:
       summary: Health check
@@ -206,6 +306,13 @@ components:
       description: |
         API key del verificador. Define el claim `aud` del JWT.
         Cada organización verificadora recibe una clave única.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token de sesión de cuenta (JWT ES256, TTL 7 días). Emitido por
+        `/auth/login` y `/auth/set-password`.
 
   schemas:
     CreateChallengeRequest:
@@ -317,6 +424,80 @@ components:
           format: date-time
         badge_display:
           $ref: '#/components/schemas/BadgeDisplay'
+        receipt:
+          allOf:
+            - $ref: '#/components/schemas/ReceiptSummary'
+          nullable: true
+
+    ReceiptSummary:
+      type: object
+      properties:
+        id: { type: string }
+        jwt: { type: string, description: JWT firmado del recibo }
+        deep_link: { type: string, example: "verifia://receipt?jwt=..." }
+
+    ReceiptStatusResponse:
+      type: object
+      properties:
+        valid: { type: boolean }
+        status:
+          type: string
+          enum: [VALID, EXPIRED, INVALID, NOT_FOUND]
+        verified_at: { type: string, format: date-time }
+        badge_valid_from: { type: string, format: date-time }
+        badge_valid_until: { type: string, format: date-time }
+        subject_name:
+          type: string
+          nullable: true
+          description: Solo vía POST /verify o nivel dueño autenticado
+        identity:
+          allOf:
+            - $ref: '#/components/schemas/UserIdentity'
+          nullable: true
+          description: Solo nivel dueño autenticado
+
+    UserIdentity:
+      type: object
+      properties:
+        full_name: { type: string }
+        curp: { type: string, nullable: true }
+        date_of_birth: { type: string, nullable: true }
+        id_type: { type: string, enum: [INE, PASSPORT] }
+        profile_photo: { type: string, description: base64 JPEG }
+        id_front_photo: { type: string, description: base64 JPEG }
+        id_back_photo: { type: string, nullable: true }
+        facetec_match_level: { type: integer, nullable: true }
+        liveness_snapshot: { type: string, nullable: true }
+        liveness_match_score: { type: integer, nullable: true }
+
+    IncomingHistoryItem:
+      type: object
+      properties:
+        nonce: { type: string }
+        status: { type: string }
+        verifier_id: { type: string }
+        rejection_reason: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        requester:
+          type: object
+          nullable: true
+          properties:
+            email: { type: string }
+            full_name: { type: string, nullable: true }
+            profile_photo: { type: string, nullable: true }
+        receipt_id: { type: string, nullable: true }
+        verified_at: { type: string, format: date-time, nullable: true }
+
+    IncomingHistoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomingHistoryItem'
+        page: { type: integer }
+        limit: { type: integer }
 
     TokenStatusResponse:
       type: object
@@ -343,6 +524,10 @@ components:
           format: date-time
         message:
           type: string
+        receipt:
+          allOf:
+            - $ref: '#/components/schemas/ReceiptSummary'
+          nullable: true
 
     ApiError:
       type: object

@@ -55,11 +55,18 @@ export interface BadgeDisplay {
   expires_at: string;
 }
 
+export interface ReceiptSummary {
+  id: string;
+  jwt: string;       // full signed receipt JWT
+  deep_link: string; // verifia://receipt?jwt=...
+}
+
 export interface IssueTokenResponse {
   token: string; // JWT ES256
   expires_in: number;
   expires_at: string;
   badge_display: BadgeDisplay;
+  receipt?: ReceiptSummary | null;
 }
 
 // ─── Token Verify / Validate ──────────────────────────────────────────────
@@ -100,6 +107,43 @@ export interface ValidateTokenResponse {
     expires_at: string;
   };
   identity?: UserIdentity | null;
+  receipt?: ReceiptSummary | null;
+}
+
+// ─── Verification Receipt ──────────────────────────────────────────────────
+
+export type ReceiptStatus = 'VALID' | 'EXPIRED' | 'INVALID' | 'NOT_FOUND';
+
+// Claims carried inside the signed receipt JWT (purpose: verification_receipt).
+export interface VerificationReceiptClaims {
+  iss: string;
+  aud: string;                 // 'verifia-receipt'
+  sub: string;                 // receipt_id
+  jti: string;
+  iat: number;
+  exp: number;
+  purpose: 'verification_receipt';
+  receipt_id: string;
+  nonce: string;
+  badge_jti: string;
+  verified_at: string;
+  badge_valid_from: string;
+  badge_valid_until: string;
+  challenge_account_id: string | null;
+  device_id: string | null;
+  subject_name: string | null;
+}
+
+// Response from GET /receipts/:id and POST /receipts/verify.
+// The public/unauthenticated tier of GET /receipts/:id omits subject_name & identity.
+export interface ReceiptStatusResponse {
+  valid: boolean;
+  status: ReceiptStatus;
+  verified_at?: string;
+  badge_valid_from?: string;
+  badge_valid_until?: string;
+  subject_name?: string | null;      // only via POST /verify or owner tier
+  identity?: UserIdentity | null;     // only owner tier
 }
 
 // ─── Profile Registration ─────────────────────────────────────────────────
@@ -178,6 +222,7 @@ export interface ChallengeHistoryItem {
     profile_photo: string;
     id_type: string;
   } | null;
+  receipt_id?: string | null;
 }
 
 export interface ChallengeHistoryResponse {
@@ -189,6 +234,7 @@ export interface ChallengeHistoryResponse {
 export interface IncomingChallenge {
   nonce: string;
   verifier_id: string;
+  status?: string;
   created_at: string;
   expires_at: string;
   requester: {
@@ -200,6 +246,29 @@ export interface IncomingChallenge {
 
 export interface IncomingChallengesResponse {
   items: IncomingChallenge[];
+}
+
+// Terminal (already-responded) incoming requests — GET /challenges/incoming/history.
+export interface IncomingHistoryItem {
+  nonce: string;
+  status: string;
+  verifier_id: string;
+  rejection_reason: string | null;
+  created_at: string;
+  expires_at: string;
+  requester: {
+    email: string;
+    full_name: string | null;
+    profile_photo: string | null;
+  } | null;
+  receipt_id: string | null;
+  verified_at: string | null;
+}
+
+export interface IncomingHistoryResponse {
+  items: IncomingHistoryItem[];
+  page: number;
+  limit: number;
 }
 
 // ─── Error response ───────────────────────────────────────────────────────

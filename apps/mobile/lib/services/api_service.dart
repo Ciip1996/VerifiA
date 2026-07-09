@@ -38,17 +38,34 @@ String friendlyError(Object e, BuildContext context) {
   return s;
 }
 
+/// Shareable receipt summary returned alongside a freshly-issued badge.
+class ReceiptSummary {
+  final String id;
+  final String jwt;
+  final String deepLink;
+
+  const ReceiptSummary({required this.id, required this.jwt, required this.deepLink});
+
+  factory ReceiptSummary.fromJson(Map<String, dynamic> json) => ReceiptSummary(
+        id: json['id'] as String,
+        jwt: json['jwt'] as String,
+        deepLink: json['deep_link'] as String,
+      );
+}
+
 class IssueTokenResponse {
   final String token;
   final int expiresIn;
   final String expiresAt;
   final Map<String, dynamic> badgeDisplay;
+  final ReceiptSummary? receipt;
 
   const IssueTokenResponse({
     required this.token,
     required this.expiresIn,
     required this.expiresAt,
     required this.badgeDisplay,
+    this.receipt,
   });
 
   factory IssueTokenResponse.fromJson(Map<String, dynamic> json) => IssueTokenResponse(
@@ -56,7 +73,131 @@ class IssueTokenResponse {
         expiresIn: json['expires_in'] as int,
         expiresAt: json['expires_at'] as String,
         badgeDisplay: json['badge_display'] as Map<String, dynamic>,
+        receipt: json['receipt'] is Map<String, dynamic>
+            ? ReceiptSummary.fromJson(json['receipt'] as Map<String, dynamic>)
+            : null,
       );
+}
+
+/// Owner-tier identity block, returned only when the caller is the authenticated
+/// owner of a receipt (matches UserIdentity on the backend).
+class ReceiptIdentity {
+  final String fullName;
+  final String? curp;
+  final String? dateOfBirth;
+  final String? idType;
+  final String? profilePhoto;
+  final String? idFrontPhoto;
+  final String? idBackPhoto;
+  final int? facetecMatchLevel;
+  final String? livenessSnapshot;
+  final int? livenessMatchScore;
+
+  const ReceiptIdentity({
+    required this.fullName,
+    this.curp,
+    this.dateOfBirth,
+    this.idType,
+    this.profilePhoto,
+    this.idFrontPhoto,
+    this.idBackPhoto,
+    this.facetecMatchLevel,
+    this.livenessSnapshot,
+    this.livenessMatchScore,
+  });
+
+  factory ReceiptIdentity.fromJson(Map<String, dynamic> json) => ReceiptIdentity(
+        fullName: json['full_name'] as String? ?? '',
+        curp: json['curp'] as String?,
+        dateOfBirth: json['date_of_birth'] as String?,
+        idType: json['id_type'] as String?,
+        profilePhoto: json['profile_photo'] as String?,
+        idFrontPhoto: json['id_front_photo'] as String?,
+        idBackPhoto: json['id_back_photo'] as String?,
+        facetecMatchLevel: (json['facetec_match_level'] as num?)?.toInt(),
+        livenessSnapshot: json['liveness_snapshot'] as String?,
+        livenessMatchScore: (json['liveness_match_score'] as num?)?.toInt(),
+      );
+}
+
+/// Server response for GET /receipts/:id and POST /receipts/verify.
+/// The unauthenticated GET tier omits subjectName and identity.
+class ReceiptServerResult {
+  final bool valid;
+  final String status; // VALID | EXPIRED | INVALID | NOT_FOUND
+  final String? verifiedAt;
+  final String? badgeValidFrom;
+  final String? badgeValidUntil;
+  final String? subjectName;
+  final ReceiptIdentity? identity;
+
+  const ReceiptServerResult({
+    required this.valid,
+    required this.status,
+    this.verifiedAt,
+    this.badgeValidFrom,
+    this.badgeValidUntil,
+    this.subjectName,
+    this.identity,
+  });
+
+  factory ReceiptServerResult.fromJson(Map<String, dynamic> json) => ReceiptServerResult(
+        valid: json['valid'] as bool? ?? false,
+        status: json['status'] as String? ?? 'INVALID',
+        verifiedAt: json['verified_at'] as String?,
+        badgeValidFrom: json['badge_valid_from'] as String?,
+        badgeValidUntil: json['badge_valid_until'] as String?,
+        subjectName: json['subject_name'] as String?,
+        identity: json['identity'] is Map<String, dynamic>
+            ? ReceiptIdentity.fromJson(json['identity'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
+/// A terminal (already-responded) incoming verification request.
+class IncomingHistoryItem {
+  final String nonce;
+  final String status;
+  final String verifierId;
+  final String? rejectionReason;
+  final String createdAt;
+  final String expiresAt;
+  final String? requesterEmail;
+  final String? requesterFullName;
+  final String? requesterProfilePhoto;
+  final String? receiptId;
+  final String? verifiedAt;
+
+  const IncomingHistoryItem({
+    required this.nonce,
+    required this.status,
+    required this.verifierId,
+    this.rejectionReason,
+    required this.createdAt,
+    required this.expiresAt,
+    this.requesterEmail,
+    this.requesterFullName,
+    this.requesterProfilePhoto,
+    this.receiptId,
+    this.verifiedAt,
+  });
+
+  factory IncomingHistoryItem.fromJson(Map<String, dynamic> json) {
+    final req = json['requester'] as Map<String, dynamic>?;
+    return IncomingHistoryItem(
+      nonce: json['nonce'] as String,
+      status: json['status'] as String? ?? 'USED',
+      verifierId: json['verifier_id'] as String? ?? '',
+      rejectionReason: json['rejection_reason'] as String?,
+      createdAt: json['created_at'] as String,
+      expiresAt: json['expires_at'] as String,
+      requesterEmail: req?['email'] as String?,
+      requesterFullName: req?['full_name'] as String?,
+      requesterProfilePhoto: req?['profile_photo'] as String?,
+      receiptId: json['receipt_id'] as String?,
+      verifiedAt: json['verified_at'] as String?,
+    );
+  }
 }
 
 class AccountProfile {
@@ -575,6 +716,42 @@ class ApiService {
       return items;
     } on DioException catch (e) {
       throw _handleDioError(e, 'getIncomingChallenges');
+    }
+  }
+
+  /// Fetch terminal (already-responded) incoming requests for the current account.
+  Future<List<IncomingHistoryItem>> getIncomingHistory() async {
+    try {
+      final response = await _dio.get('/api/v1/challenges/incoming/history');
+      final data = response.data as Map<String, dynamic>;
+      return (data['items'] as List<dynamic>)
+          .map((e) => IncomingHistoryItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'getIncomingHistory');
+    }
+  }
+
+  /// Level-2 server confirmation: verify a receipt JWT (proof of possession).
+  /// Returns the tiered payload (subject_name always; identity only for owner).
+  Future<ReceiptServerResult> verifyReceipt(String receiptJwt) async {
+    try {
+      final response = await _dio.post('/api/v1/receipts/verify', data: {
+        'receipt_jwt': receiptJwt,
+      });
+      return ReceiptServerResult.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'verifyReceipt');
+    }
+  }
+
+  /// Bare-id receipt lookup (public subset unless the caller is the owner).
+  Future<ReceiptServerResult> getReceipt(String id) async {
+    try {
+      final response = await _dio.get('/api/v1/receipts/$id');
+      return ReceiptServerResult.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleDioError(e, 'getReceipt');
     }
   }
 

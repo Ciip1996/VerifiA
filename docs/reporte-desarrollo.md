@@ -624,5 +624,54 @@ El desarrollo de VerifiA ha evidenciado la complejidad inherente de integrar mú
 
 ---
 
+## 9. Recibos de Verificación (Constancias Firmadas)
+
+Hasta esta iteración, una verificación exitosa era **efímera y volátil**: el JWT de presencia vivía 2–5 minutos y luego desaparecía sin dejar constancia. El verificador veía "✅ verificado" en el momento, pero no le quedaba **evidencia portable** de que la verificación ocurrió. Se añadió un mecanismo de *recibos de verificación* (constancias) para cerrar esa brecha sin debilitar el modelo efímero del badge.
+
+### 9.1 Decisión de diseño: dos artefactos con propósitos opuestos
+
+Se optó deliberadamente por **no** extender el TTL del badge. En su lugar se introdujo un segundo artefacto criptográfico con semántica distinta:
+
+| Artefacto | TTL | Propósito | Reutilizable |
+|---|---|---|---|
+| **Badge (JWT de presencia)** | 2–5 min | Probar presencia *en vivo* durante la verificación | No (JTI único, un solo uso) |
+| **Recibo (constancia firmada)** | 30 días | Probar que *una verificación ocurrió* (evidencia histórica) | Sí (verificable N veces, no muta estado) |
+
+El badge sigue siendo el "momento" efímero; el recibo es la "fotografía" firmada de ese momento. Ambos son JWT ES256 firmados con la misma llave del backend, pero con `purpose` y `aud` (`verifia-receipt`) distintos para que nunca se confundan al verificar.
+
+### 9.2 Emisión desde ambos flujos (P2P y portal)
+
+Un hallazgo temprano fue una **asimetría arquitectónica**: la constancia se había pensado para el flujo del portal (`POST /tokens/validate`), pero el flujo móvil persona-a-persona (P2P) completa la verificación en `POST /tokens/issue` y **nunca** pasa por `/validate`. Se resolvió extrayendo la emisión a un servicio compartido (`issueReceipt`) invocado desde ambos endpoints, con un campo `issued_via` (`issue` | `validate`) para auditar el origen.
+
+Esto destapó además una **vulnerabilidad de consumo del token** en el flujo P2P: el `Token` quedaba `ACTIVE` tras emitirse, de modo que un atacante que adivinara el `X-API-Key` (el correo del solicitante) podría re-consumirlo vía `/validate`. La corrección marca el `Token` como `USED` inmediatamente al emitir en P2P (uso único real), cubierta por prueba de regresión.
+
+### 9.3 Idempotencia y anti-replay
+
+`issueReceipt` es **idempotente por `challenge_nonce`**: emitir dos veces para la misma verificación devuelve la misma fila (se maneja incluso la condición de carrera con un *catch* que relee la fila existente). Verificar un recibo (`verifyReceipt`) **nunca muta estado** — a diferencia del badge, que es de un solo uso. Esta distinción es intencional: una constancia debe poder mostrarse repetidamente sin "gastarse".
+
+### 9.4 Privacidad por niveles (tiered access)
+
+La información del recibo se expone en tres niveles crecientes de prueba de posesión:
+
+1. **`GET /receipts/:id` sin autenticar** — solo `{valid, status, verified_at, ventana de validez}`. **Nunca** revela `subject_name` ni `nonce`: un id `cuid` filtrado no debe exponer el nombre de la persona verificada. Cubierto por prueba explícita.
+2. **`POST /receipts/verify` con el JWT completo** — quien envía el JWT firmado ya *posee* la constancia, por lo que es seguro devolver `subject_name` (es inherente a compartir el ticket).
+3. **Dueño autenticado (Bearer = `account_id` del recibo)** — añade el bloque `identity` completo (fotos INE, selfie de liveness, score biométrico). Solo el sujeto verificado ve sus propios datos sensibles.
+
+### 9.5 Verificación en dos niveles en el cliente
+
+La app implementa verificación **offline-first**:
+
+- **Nivel 1 (offline):** chequeo de firma ES256 contra la llave pública embebida como constante de compilación (las llaves públicas son seguras de distribuir). Funciona sin red y distingue cuatro estados: `auténtico`, `expirado`, `inválido`, `malformado`.
+- **Nivel 2 (servidor):** confirma el estado vigente y trae el bloque `identity` del dueño.
+
+Se cuidó una distinción **emocionalmente opuesta** en la UX: `expirado` significa que la verificación **sí ocurrió** (solo venció el registro de 30 días → mensaje tranquilizador), mientras que `inválido` sugiere manipulación o falsificación (→ mensaje de alarma). Un recibo manipulado nunca muestra datos de identidad. El header del JWT incluye `kid` desde ahora para permitir rotación de llaves futura sin romper apps ya instaladas.
+
+### 9.6 Superficies de recepción y compartición
+
+- **Compartir (portador):** el `BadgeScreen` ofrece la constancia como imagen QR escaneable (caso presencial "escanéame"), como deep link (`verifia://receipt?jwt=…`) y copia al portapapeles.
+- **Recibir (verificador):** deep link, escaneo QR, pegar desde portapapeles, tap en notificación push (`receipt_id`), y una sección **Historial** dentro de "Actividad" → "Recibidas" que lista verificaciones terminales con acceso al ticket. Todos los estados y textos nuevos se localizaron en es/en, incluyendo el *empty state* del historial.
+
+---
+
 *Documento en desarrollo — se actualiza conforme avanzan las iteraciones del proyecto.*  
-*Última actualización: Mayo 2026*
+*Última actualización: Julio 2026*
