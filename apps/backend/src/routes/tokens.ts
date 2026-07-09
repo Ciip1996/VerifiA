@@ -122,6 +122,14 @@ tokensRouter.post('/issue', async (req, res, next) => {
           metadata: { reason: 'FACETEC_SCORE_BELOW_THRESHOLD', score: liveness_match_score, min_score: minScore },
         },
       });
+      // Notify sender — same type as a manual reject so the client handles both identically.
+      if (challenge.account_id) {
+        pushToAccount(challenge.account_id, {
+          title: 'Solicitud rechazada',
+          body: 'La verificación no pasó el chequeo de similitud facial.',
+          data: { type: 'CHALLENGE_REJECTED', nonce },
+        }).catch(() => {});
+      }
       throw new AppError(422, 'Face match score below threshold — verification rejected', 'FACETEC_SCORE_REJECTED');
     }
 
@@ -196,6 +204,26 @@ tokensRouter.post('/issue', async (req, res, next) => {
         body: `${verifierName} completó tu solicitud de verificación.`,
         data: {
           type: 'CHALLENGE_USED',
+          nonce,
+          ...(receipt ? { receipt_id: receipt.id } : {}),
+        },
+      }).catch(() => {});
+    }
+
+    // 12. Push notification to the recipient (person who just completed the
+    // scan) confirming their own verification — they already see the result
+    // synchronously in the app, but this covers the case where they
+    // backgrounded the app mid-flow, and gives them a durable receipt link.
+    const recipientAccount = await prisma.account.findUnique({
+      where: { device_id },
+      select: { id: true },
+    });
+    if (recipientAccount) {
+      pushToAccount(recipientAccount.id, {
+        title: 'Verificación completada',
+        body: 'Tu verificación se completó correctamente. Aquí está tu comprobante.',
+        data: {
+          type: 'VERIFICATION_COMPLETED_SELF',
           nonce,
           ...(receipt ? { receipt_id: receipt.id } : {}),
         },

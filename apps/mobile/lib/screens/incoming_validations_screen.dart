@@ -13,30 +13,63 @@ import 'receipt_detail_screen.dart';
 import 'verification_detail_screen.dart';
 
 /// Displays pending verification requests (Recibidas) and sent requests (Enviadas).
-class IncomingValidationsScreen extends StatelessWidget {
-  const IncomingValidationsScreen({super.key});
+class IncomingValidationsScreen extends StatefulWidget {
+  const IncomingValidationsScreen({super.key, this.switchToTab});
+
+  /// When notified with a new value (0 = Recibidas, 1 = Enviadas),
+  /// programmatically switches the visible sub-tab. Used by [HomeScreen] to
+  /// land on the Enviadas sub-tab when the user taps/opens a sender-facing
+  /// push notification (e.g. CHALLENGE_IN_PROGRESS / CHALLENGE_REJECTED).
+  final ValueNotifier<int>? switchToTab;
+
+  @override
+  State<IncomingValidationsScreen> createState() => _IncomingValidationsScreenState();
+}
+
+class _IncomingValidationsScreenState extends State<IncomingValidationsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    widget.switchToTab?.addListener(_onSwitchRequested);
+  }
+
+  void _onSwitchRequested() {
+    final target = widget.switchToTab?.value;
+    if (target != null && target != _tabController.index) {
+      _tabController.animateTo(target);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.switchToTab?.removeListener(_onSwitchRequested);
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return DefaultTabController(
-      length: 2,
-      child: Column(children: [
-        TabBar(
-          tabs: [
-            Tab(text: l10n.inboxTabReceived),
-            Tab(text: l10n.inboxTabSent),
-          ],
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const Expanded(
-          child: TabBarView(children: [
-            _ReceivedTab(),
-            _SentTab(),
-          ]),
-        ),
-      ]),
-    );
+    return Column(children: [
+      TabBar(
+        controller: _tabController,
+        tabs: [
+          Tab(text: l10n.inboxTabReceived),
+          Tab(text: l10n.inboxTabSent),
+        ],
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tabController, children: const [
+          _ReceivedTab(),
+          _SentTab(),
+        ]),
+      ),
+    ]);
   }
 }
 

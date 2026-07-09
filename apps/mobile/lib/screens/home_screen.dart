@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../services/app_attest_service.dart' show AppAttestService;
 import '../services/feedback_service.dart';
 import '../services/inbox_service.dart';
+import '../services/notification_dedupe.dart';
 import '../services/onesignal_service.dart';
 import '../services/sent_challenges_service.dart';
 import 'account_profile_screen.dart';
@@ -37,6 +38,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final _inbox = InboxService.instance;
   final _sent = SentChallengesService.instance;
 
+  /// Drives which sub-tab (0 = Recibidas, 1 = Enviadas) is shown inside the
+  /// Activity tab. Notified when a notification about a sent challenge is
+  /// tapped/opened so the user lands on the relevant sub-tab instead of
+  /// always defaulting to Recibidas.
+  final _activityTabSwitch = ValueNotifier<int>(0);
+
+  /// Push `data.type` values this screen has dedicated in-app handling for.
+  static const _knownPushTypes = {
+    'CHALLENGE_INVITE',
+    'CHALLENGE_IN_PROGRESS',
+    'CHALLENGE_REJECTED',
+    'CHALLENGE_CANCELLED',
+    'CHALLENGE_USED',
+    'VERIFICATION_COMPLETED_SELF',
+  };
+
   bool get _isOffline => _inbox.isOffline || _sent.isOffline;
 
   @override
@@ -52,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         OneSignalService().initialize();
         OneSignalService().setupSubscriptionVerification(context);
         OneSignalService().addClickListener(_onNotificationClick);
+        OneSignalService().addForegroundListener(_onForegroundNotification);
         const skipAttest = bool.fromEnvironment('VERIFIA_SKIP_ATTEST', defaultValue: false);
         if (!skipAttest) {
           unawaited(AppAttestService().registerIfNeeded(ApiService()));
@@ -60,12 +78,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Handles a tapped push notification. When the payload carries a receipt_id
-  /// (a completed verification the sender requested), open the Ticket directly;
-  /// otherwise fall back to surfacing the Activity tab.
+  /// Handles a tapped push notification (background/closed case). When the
+  /// payload carries a receipt_id (a completed verification), open the
+  /// Ticket directly; otherwise route to the Activity tab, landing on the
+  /// sub-tab relevant to the notification type (Enviadas for notifications
+  /// about a challenge *we* sent, Recibidas otherwise).
   void _onNotificationClick(dynamic event) {
     if (!mounted) return;
     final data = event.notification.additionalData;
+    final type = data is Map ? data['type'] as String? : null;
     final receiptId = data is Map ? data['receipt_id'] as String? : null;
     if (receiptId != null && receiptId.isNotEmpty) {
       Navigator.of(context).push(
@@ -74,13 +95,144 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _tabIndex = 2);
-    _inbox.markAllSeen();
+    if (_isSentSideType(type)) {
+      _activityTabSwitch.value = 1;
+    } else {
+      _activityTabSwitch.value = 0;
+      _inbox.markAllSeen();
+    }
+  }
+
+  static bool _isSentSideType(String? type) =>
+      type == 'CHALLENGE_IN_PROGRESS' ||
+      type == 'CHALLENGE_REJECTED' ||
+      type == 'CHALLENGE_USED';
+
+  /// Maps a push `type` to the challenge-status vocabulary used by
+  /// [SentChallengesService]'s poll-based transition detection, so both
+  /// paths can dedupe against the same key. Returns null for types that
+  /// have no polling-based fallback counterpart (no collision risk).
+  static String? _statusKeyForType(String type) {
+    switch (type) {
+      case 'CHALLENGE_IN_PROGRESS':
+        return 'IN_PROGRESS';
+      case 'CHALLENGE_REJECTED':
+        return 'REJECTED';
+      case 'CHALLENGE_CANCELLED':
+        return 'CANCELLED';
+      case 'CHALLENGE_USED':
+        return 'USED';
+      default:
+        return null;
+    }
+  }
+
+  static IconData _iconForType(String type) {
+    switch (type) {
+      case 'CHALLENGE_IN_PROGRESS':
+        return Icons.hourglass_top_rounded;
+      case 'CHALLENGE_REJECTED':
+        return Icons.cancel_rounded;
+      case 'CHALLENGE_CANCELLED':
+        return Icons.block_rounded;
+      case 'CHALLENGE_USED':
+      case 'VERIFICATION_COMPLETED_SELF':
+        return Icons.verified_rounded;
+      default:
+        return Icons.notifications_rounded;
+    }
+  }
+
+  static Color _colorForType(String type) {
+    switch (type) {
+      case 'CHALLENGE_IN_PROGRESS':
+        return const Color(0xFF1565C0);
+      case 'CHALLENGE_REJECTED':
+        return const Color(0xFFC62828);
+      case 'CHALLENGE_CANCELLED':
+        return const Color(0xFF757575);
+      case 'CHALLENGE_USED':
+      case 'VERIFICATION_COMPLETED_SELF':
+        return const Color(0xFF2E7D32);
+      default:
+        return const Color(0xFF616161);
+    }
+  }
+
+  void _onEventBannerTap(String type, String? receiptId) {
+    if (receiptId != null && receiptId.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ReceiptDetailScreen.fromId(receiptId)),
+      );
+      return;
+    }
+    setState(() => _tabIndex = 2);
+    if (_isSentSideType(type)) {
+      _activityTabSwitch.value = 1;
+    } else {
+      _activityTabSwitch.value = 0;
+      _inbox.markAllSeen();
+    }
+  }
+
+  /// Handles a push notification arriving while the app is in the foreground.
+  /// OneSignal displays a native banner automatically for every push unless
+  /// we intervene. For every lifecycle event we recognize we suppress the
+  /// native banner and show our own in-app banner immediately — using the
+  /// push's own (already-localized) title/body — then silently refresh the
+  /// relevant polling service so list state stays in sync. A shared dedupe
+  /// guard ([NotificationDedupe]) ensures the polling services' independent
+  /// transition detection (kept as a fallback for missed/delayed pushes)
+  /// never shows a second banner for the same event.
+  void _onForegroundNotification(dynamic event) {
+    final notification = event.notification;
+    final data = notification.additionalData;
+    final type = data is Map ? data['type'] as String? : null;
+    if (type == null || !_knownPushTypes.contains(type)) return;
+
+    event.preventDefault();
+
+    final nonce = data is Map ? data['nonce'] as String? : null;
+    final receiptId = data is Map ? data['receipt_id'] as String? : null;
+    final statusKey = _statusKeyForType(type);
+    final alreadyShown = nonce != null &&
+        statusKey != null &&
+        !NotificationDedupe.instance.tryMark('$nonce:$statusKey');
+
+    switch (type) {
+      case 'CHALLENGE_INVITE':
+        // The richer avatar banner (requester photo/name) is shown by
+        // _onInboxChanged once polling notices the new arrival — just force
+        // an immediate poll instead of waiting for the next 5s tick.
+        _inbox.refresh();
+        return;
+      case 'CHALLENGE_CANCELLED':
+      case 'VERIFICATION_COMPLETED_SELF':
+        _inbox.refresh();
+        break;
+      case 'CHALLENGE_IN_PROGRESS':
+      case 'CHALLENGE_REJECTED':
+      case 'CHALLENGE_USED':
+        _sent.refresh();
+        break;
+    }
+
+    if (alreadyShown) return;
+
+    _showEventBanner(
+      icon: _iconForType(type),
+      color: _colorForType(type),
+      title: notification.title as String? ?? '',
+      body: notification.body as String? ?? '',
+      onTap: () => _onEventBannerTap(type, receiptId),
+    );
   }
 
   @override
   void dispose() {
     _inbox.removeListener(_onInboxChanged);
     _sent.removeListener(_onSentChanged);
+    _activityTabSwitch.dispose();
     super.dispose();
   }
 
@@ -88,9 +240,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {});
 
-    // Show in-app banner only when the user is NOT already on the inbox tab
+    // Show in-app banner only when the user is NOT already on the inbox tab.
+    // Guarded by the shared dedupe set as a safety net in case a duplicate/
+    // redelivered push already forced a refresh that produced this same
+    // "new arrival" — in practice this path is the only one that ever fires
+    // for CHALLENGE_INVITE, so this is mostly defensive.
     final newChallenge = _inbox.consumeLatestNew();
-    if (newChallenge != null && _tabIndex != 2) {
+    if (newChallenge != null &&
+        _tabIndex != 2 &&
+        NotificationDedupe.instance.tryMark('${newChallenge.nonce}:NEW')) {
       FeedbackService.incoming();
       _showInAppBanner(newChallenge);
     }
@@ -160,57 +318,86 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Poll-based fallback for status changes on challenges the user SENT.
+  /// [SentChallengesService] detects these transitions independently of
+  /// push (up to its 8s poll interval later), so this only shows a banner
+  /// if the equivalent push-driven banner hasn't already fired for the same
+  /// nonce+status — see [NotificationDedupe].
   void _onSentChanged() {
     if (!mounted) return;
     setState(() {});
 
     final change = _sent.consumeLatestChange();
     if (change == null) return;
+    if (!NotificationDedupe.instance
+        .tryMark('${change.challenge.nonce}:${change.newStatus}')) {
+      return;
+    }
 
     FeedbackService.incoming();
+    final l10n = AppLocalizations.of(context)!;
+    final c = change.challenge;
+    final recipient = c.subjectFullName ?? c.targetEmail ?? l10n.sentRecipient;
+
     if (change.newStatus == 'USED') {
-      _showVerifiedBanner(change);
+      _showEventBanner(
+        icon: Icons.verified_rounded,
+        color: const Color(0xFF2E7D32),
+        title: l10n.bannerVerifiedRequest(recipient),
+        body: c.targetEmail ?? '',
+        onTap: () {
+          setState(() => _tabIndex = 2);
+          _activityTabSwitch.value = 1;
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => VerificationDetailScreen(challenge: c)),
+          );
+        },
+      );
     } else {
-      _showRejectedBanner(change);
+      final isRejected = change.newStatus == 'REJECTED';
+      _showEventBanner(
+        icon: isRejected ? Icons.cancel_rounded : Icons.block_rounded,
+        color: isRejected ? const Color(0xFFC62828) : const Color(0xFF757575),
+        title: isRejected
+            ? l10n.bannerRejectedRequest(recipient)
+            : l10n.bannerCancelledRequest(recipient),
+        body: c.targetEmail ?? '',
+        onTap: () {
+          setState(() => _tabIndex = 2);
+          _activityTabSwitch.value = 1;
+        },
+      );
     }
   }
 
-  void _showRejectedBanner(SentStatusChange change) {
+  /// Unified in-app banner used for every lifecycle event except the
+  /// incoming-request one (which keeps its own richer avatar variant, see
+  /// [_showInAppBanner]).
+  void _showEventBanner({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String body,
+    required VoidCallback onTap,
+  }) {
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentMaterialBanner();
-
-    final c = change.challenge;
-    final isRejected = change.newStatus == 'REJECTED';
-    final recipient = c.subjectFullName ?? c.targetEmail ?? l10n.sentRecipient;
-    final bannerMsg = isRejected
-        ? l10n.bannerRejectedRequest(recipient)
-        : l10n.bannerCancelledRequest(recipient);
 
     messenger.showMaterialBanner(
       MaterialBanner(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         leading: CircleAvatar(
           radius: 20,
-          backgroundColor: isRejected
-              ? const Color(0xFFC62828).withAlpha(30)
-              : const Color(0xFF757575).withAlpha(30),
-          child: Icon(
-            isRejected ? Icons.cancel_rounded : Icons.block_rounded,
-            color: isRejected ? const Color(0xFFC62828) : const Color(0xFF757575),
-            size: 22,
-          ),
+          backgroundColor: color.withAlpha(30),
+          child: Icon(icon, color: color, size: 22),
         ),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              bannerMsg,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            if (c.targetEmail != null)
-              Text(c.targetEmail!, style: const TextStyle(fontSize: 12)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            if (body.isNotEmpty) Text(body, style: const TextStyle(fontSize: 12)),
           ],
         ),
         actions: [
@@ -221,65 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
           FilledButton.tonal(
             onPressed: () {
               messenger.hideCurrentMaterialBanner();
-              setState(() => _tabIndex = 2);
-            },
-            child: Text(l10n.seeAction),
-          ),
-        ],
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) messenger.hideCurrentMaterialBanner();
-    });
-  }
-
-  void _showVerifiedBanner(SentStatusChange change) {
-    final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentMaterialBanner();
-
-    final c = change.challenge;
-    final name = c.subjectFullName ?? c.targetEmail ?? l10n.sentRecipient;
-
-    messenger.showMaterialBanner(
-      MaterialBanner(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: const Color(0xFF1B5E20).withAlpha(30),
-          child: const Icon(
-            Icons.verified_rounded,
-            color: Color(0xFF2E7D32),
-            size: 22,
-          ),
-        ),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l10n.bannerVerifiedRequest(name),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            if (c.targetEmail != null)
-              Text(c.targetEmail!, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => messenger.hideCurrentMaterialBanner(),
-            child: Text(l10n.dismiss),
-          ),
-          FilledButton.tonal(
-            onPressed: () {
-              messenger.hideCurrentMaterialBanner();
-              setState(() => _tabIndex = 2);
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => VerificationDetailScreen(challenge: c),
-                ),
-              );
+              onTap();
             },
             child: Text(l10n.seeAction),
           ),
@@ -397,10 +526,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   offstage: _tabIndex == 0,
                   child: IndexedStack(
                     index: (_tabIndex - 1).clamp(0, 2),
-                    children: const [
-                      CreateChallengeScreen(),
-                      IncomingValidationsScreen(),
-                      UserSearchScreen(),
+                    children: [
+                      const CreateChallengeScreen(),
+                      IncomingValidationsScreen(switchToTab: _activityTabSwitch),
+                      const UserSearchScreen(),
                     ],
                   ),
                 ),

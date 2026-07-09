@@ -50,6 +50,29 @@ challengesRouter.post('/', optionalAccount, async (req, res, next) => {
       },
     });
 
+    // Notify the recipient right away — this is the only way they'll learn
+    // about the request in time if the app isn't open (backgrounded/closed).
+    // In-app polling (InboxService) only covers the case where they already
+    // have the app open.
+    if (target_email && req.account) {
+      const requesterAccount = await prisma.account.findUnique({
+        where: { id: req.account.id },
+        select: { device_id: true },
+      });
+      const requesterProfile = requesterAccount
+        ? await prisma.userProfile.findUnique({
+            where: { device_id: requesterAccount.device_id },
+            select: { full_name: true },
+          })
+        : null;
+      const requesterName = requesterProfile?.full_name ?? req.account.email;
+      pushToEmail(target_email, {
+        title: 'Solicitud de verificación',
+        body: `${requesterName} te pide verificar tu identidad en VerifiA.`,
+        data: { type: 'CHALLENGE_INVITE', nonce },
+      }).catch(() => {});
+    }
+
     const deepLink = `verifia://badge?nonce=${nonce}&verifier=${encodeURIComponent(verifier_id)}`;
     const qrData = deepLink;
     const apiBase = (process.env.API_BASE_URL ?? '').replace(/\/$/, '');
