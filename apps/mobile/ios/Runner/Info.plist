@@ -70,6 +70,8 @@
 	<string>VerifiA needs the camera to scan verification QR codes.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>VerifiA uses Face ID to authorize presence verification.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>VerifiA does not use your location. A third-party identity-verification SDK included in this app references location APIs.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

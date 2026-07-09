@@ -190,6 +190,8 @@
   "profileLogoutContent": "Are you sure you want to sign out?",
   "profileLogoutButton": "Sign out",
   "profileLoadError": "Could not load profile",
+  "profileSessionExpired": "Your session has expired",
+  "profileSignInAgain": "Sign in again",
   "profileTitle": "My Profile",
   "profileVerifiedBadge": "Identity verified",
   "profileEmailLabel": "Email address",

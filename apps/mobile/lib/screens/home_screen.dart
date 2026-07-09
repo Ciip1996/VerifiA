@@ -282,11 +282,21 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return;
       }
-      final email = await _storage.read(key: 'verifia_account_email');
-      if (email != null && mounted) {
-        setState(() => _fullName = email.split('@').first);
+
+      final profile = await ApiService().fetchMe();
+      if (!mounted) return;
+      setState(() => _fullName = profile.fullName ?? profile.email.split('@').first);
+      await _storage.write(key: 'verifia_account_email', value: profile.email);
+      if (profile.id.isNotEmpty) {
+        await _storage.write(key: 'verifia_account_id', value: profile.id);
       }
-    } catch (_) {}
+    } catch (e) {
+      if (ApiService.isUnauthorized(e) && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    }
   }
 
   void _onTabSelected(int i) {

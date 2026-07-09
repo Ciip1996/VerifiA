@@ -14,7 +14,10 @@
     "build:portal": "npm -w apps/portal run build",
     "test:backend": "npm -w apps/backend run test",
     "lint": "npm -w apps/backend run lint && npm -w apps/portal run lint",
-    "typecheck": "npm -w packages/shared run typecheck && npm -w apps/backend run typecheck && npm -w apps/portal run typecheck"
+    "typecheck": "npm -w packages/shared run typecheck && npm -w apps/backend run typecheck && npm -w apps/portal run typecheck",
+    "mobile:build:ipa": "cd apps/mobile && flutter build ipa --dart-define=VERIFIA_API_URL=https://verifia-backend.vercel.app --dart-define=VERIFIA_SKIP_ATTEST=false",
+    "mobile:deploy:testflight": "cd apps/mobile && bash scripts/deploy-testflight.sh",
+    "mobile:build:deploy": "npm run mobile:build:ipa && npm run mobile:deploy:testflight"
   },
   "engines": {
     "node": ">=20.0.0",

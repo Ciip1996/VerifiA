@@ -583,6 +583,12 @@
   "profileLoadError": "No se pudo cargar el perfil",
   "@profileLoadError": { "description": "Error title when the profile fails to load" },
 
+  "profileSessionExpired": "Tu sesión ha expirado",
+  "@profileSessionExpired": { "description": "Error title when the account session JWT is invalid or expired" },
+
+  "profileSignInAgain": "Iniciar sesión de nuevo",
+  "@profileSignInAgain": { "description": "Button to return to login after session expiry" },
+
   "profileTitle": "Mi Perfil",
   "@profileTitle": { "description": "AppBar title for the account profile screen" },
 

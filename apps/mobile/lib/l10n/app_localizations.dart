@@ -1172,6 +1172,18 @@ abstract class AppLocalizations {
   /// **'No se pudo cargar el perfil'**
   String get profileLoadError;
 
+  /// Error title when the account session JWT is invalid or expired
+  ///
+  /// In es, this message translates to:
+  /// **'Tu sesión ha expirado'**
+  String get profileSessionExpired;
+
+  /// Button to return to login after session expiry
+  ///
+  /// In es, this message translates to:
+  /// **'Iniciar sesión de nuevo'**
+  String get profileSignInAgain;
+
   /// AppBar title for the account profile screen
   ///
   /// In es, this message translates to:

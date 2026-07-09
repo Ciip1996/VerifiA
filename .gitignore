@@ -13,6 +13,7 @@ out/
 .env.local
 .env.*.local
 *.pem
+*.p8
 
 # Claude Code (local overrides only; commit CLAUDE.md + .claude/settings.json)
 .claude/settings.local.json

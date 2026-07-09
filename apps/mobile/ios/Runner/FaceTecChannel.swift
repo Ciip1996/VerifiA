@@ -551,16 +551,25 @@ class FaceTecIDMatchProcessor: NSObject, FaceTecFaceScanProcessorDelegate, FaceT
                 print("[FaceTec ID] Parsed — name: \(self.fullName ?? "nil"), curp: \(self.curp ?? "nil"), dob: \(self.dateOfBirth ?? "nil"), matchLevel: \(self.matchLevel)")
                 self.success = idScanResultCallback.onIDScanResultProceedToNextStep(scanResultBlob: blob)
             } else {
-                // Dev fallback: proceed without server validation
+                // Dev fallback: proceed without server validation, but only when
+                // we actually captured a complete scan (front photo + face scan) —
+                // never mark success on a cancelled/incomplete session.
                 print("[FaceTec ID] match-3d-2d-idscan failed — using dev bypass")
-                self.success = true
+                self.success = self.idFrontPhoto != nil && self.faceScanBase64 != nil
                 idScanResultCallback.onIDScanResultCancel()
             }
         }
     }
 
     func onFaceTecSDKCompletelyDone() {
-        if success || (idFrontPhoto != nil) {
+        // Only report success when the session truly completed end-to-end.
+        // Do NOT fall back to "idFrontPhoto != nil" here — on a retake flow
+        // (e.g. front ID text unclear, FaceTec asks to rescan), idFrontPhoto
+        // is already populated from the first attempt. If the user then hits
+        // the X button to cancel, `success` is false but idFrontPhoto is not
+        // nil, and the old check incorrectly reported the session as
+        // successful with stale/partial data.
+        if success && faceScanBase64 != nil && idFrontPhoto != nil {
             var result: [String: Any] = [
                 "faceScanBase64": faceScanBase64 ?? "",
                 "auditTrailImage": auditTrailImage ?? "",

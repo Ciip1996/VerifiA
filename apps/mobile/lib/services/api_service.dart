@@ -262,7 +262,8 @@ class ApiService {
       },
     ));
 
-    // Inject session token from storage before each request
+    // Inject session token from storage before each request;
+    // clear stale tokens when the backend rejects them.
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: _sessionKey);
@@ -270,6 +271,16 @@ class ApiService {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
+      },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          final data = error.response?.data;
+          final code = data is Map ? data['code'] : null;
+          if (code == 'UNAUTHORIZED') {
+            await _storage.delete(key: _sessionKey);
+          }
+        }
+        handler.next(error);
       },
     ));
 
@@ -284,6 +295,13 @@ class ApiService {
 
   static Future<String?> getSessionToken() => _storage.read(key: _sessionKey);
   static Future<void> clearSession() => _storage.delete(key: _sessionKey);
+
+  /// True when the backend rejected the account session JWT (expired or invalid).
+  static bool isUnauthorized(Object e) {
+    final message = e.toString();
+    return message.contains('UNAUTHORIZED') ||
+        message.contains('Invalid or expired session token');
+  }
 
   /// Fetch a one-time registration challenge for App Attest key attestation.
   /// Returns the 32-byte hex nonce.

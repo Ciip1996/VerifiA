@@ -40,7 +40,15 @@ class _LivenessScreenState extends State<LivenessScreen>
   int _frameCount = 0;
 
   // ─── ML Kit ────────────────────────────────────────────────────────────────
+  // Fast mode: tuned for real-time frame-by-frame yaw tracking during the
+  // head-turn challenge (speed matters more than per-frame precision here).
   late final FaceDetector _detector;
+  // Accurate mode: used only for the final still-photo quality check, where
+  // we have a single frame to get right and can afford the extra latency.
+  // Using the same "fast" detector for this one-shot check produced noisier
+  // eye-open/angle readings that frequently (and incorrectly) rejected good
+  // photos, forcing users through all 3 retry attempts almost every time.
+  late final FaceDetector _stillDetector;
 
   // ─── State machine ─────────────────────────────────────────────────────────
   _Stage _stage = _Stage.center;
@@ -94,6 +102,14 @@ class _LivenessScreenState extends State<LivenessScreen>
       options: FaceDetectorOptions(
         performanceMode: FaceDetectorMode.fast,
         enableClassification: true,  // needed for eye-open probability
+        enableLandmarks: false,
+        enableTracking: false,
+      ),
+    );
+    _stillDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        performanceMode: FaceDetectorMode.accurate,
+        enableClassification: true,
         enableLandmarks: false,
         enableTracking: false,
       ),
@@ -321,24 +337,35 @@ class _LivenessScreenState extends State<LivenessScreen>
     final l10n = _l10n;
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
-      final faces = await _detector.processImage(inputImage);
+      // Accurate mode gives much more stable eye-open/angle readings on a
+      // single still than the fast detector used for live frame tracking.
+      final faces = await _stillDetector.processImage(inputImage);
 
-      if (faces.isEmpty) return l10n?.livenessQualityNoFace ?? 'No se detectó rostro — acércate un poco';
+      if (faces.isEmpty) {
+        debugPrint('[Liveness] quality attempt $_photoAttempts: no face detected');
+        return l10n?.livenessQualityNoFace ?? 'No se detectó rostro — acércate un poco';
+      }
 
       final face = faces.first;
 
-      // Eyes open check
+      // Eyes open check. Thresholds are intentionally forgiving (a natural
+      // photo blink/squint still reads >0.4) — we only want to catch clearly
+      // closed eyes, not reject good photos over noisy probabilities.
       final leftEye  = face.leftEyeOpenProbability  ?? 1.0;
       final rightEye = face.rightEyeOpenProbability ?? 1.0;
-      if (leftEye < 0.6 || rightEye < 0.6) {
-        return l10n?.livenessQualityEyesClosed ?? 'Abre los ojos para la foto';
-      }
 
       // Head orientation: not too turned / tilted
       final yaw   = face.headEulerAngleY ?? 0;
       final pitch = face.headEulerAngleX ?? 0;
-      if (yaw.abs() > 22) return l10n?.livenessQualityFaceAngle ?? 'Mira de frente a la cámara';
-      if (pitch.abs() > 20) return l10n?.livenessQualityTilted ?? 'Endereza la cabeza';
+
+      debugPrint('[Liveness] quality attempt $_photoAttempts: '
+          'eyes=($leftEye, $rightEye) yaw=$yaw pitch=$pitch');
+
+      if (leftEye < 0.4 || rightEye < 0.4) {
+        return l10n?.livenessQualityEyesClosed ?? 'Abre los ojos para la foto';
+      }
+      if (yaw.abs() > 28) return l10n?.livenessQualityFaceAngle ?? 'Mira de frente a la cámara';
+      if (pitch.abs() > 25) return l10n?.livenessQualityTilted ?? 'Endereza la cabeza';
 
       return null; // all good
     } catch (e) {
@@ -373,6 +400,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     _pulseCtrl.dispose();
     _fallbackTimer?.cancel();
     _detector.close();
+    _stillDetector.close();
     _cam?.dispose();
     super.dispose();
   }

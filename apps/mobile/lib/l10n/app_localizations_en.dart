@@ -605,6 +605,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileLoadError => 'Could not load profile';
 
   @override
+  String get profileSessionExpired => 'Your session has expired';
+
+  @override
+  String get profileSignInAgain => 'Sign in again';
+
+  @override
   String get profileTitle => 'My Profile';
 
   @override

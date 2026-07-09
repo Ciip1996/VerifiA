@@ -608,6 +608,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileLoadError => 'No se pudo cargar el perfil';
 
   @override
+  String get profileSessionExpired => 'Tu sesión ha expirado';
+
+  @override
+  String get profileSignInAgain => 'Iniciar sesión de nuevo';
+
+  @override
   String get profileTitle => 'Mi Perfil';
 
   @override

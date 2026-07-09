@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 import 'public_user_profile_screen.dart';
 
 class UserSearchScreen extends StatefulWidget {
@@ -62,6 +63,13 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       setState(() { _results = results; _searching = false; });
     } catch (e) {
       if (!mounted) return;
+      if (ApiService.isUnauthorized(e)) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+        return;
+      }
       setState(() {
         _error = friendlyError(e, context);
         _searching = false;

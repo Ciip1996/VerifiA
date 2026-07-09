@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/onesignal_service.dart';
-import 'home_screen.dart';
+import 'login_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key});
@@ -26,6 +26,17 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   }
 
   void _retry() => setState(() => _profileFuture = ApiService().fetchMe());
+
+  Future<void> _signInAgain() async {
+    await ApiService.clearSession();
+    await _storage.delete(key: 'verifia_account_email');
+    await _storage.delete(key: 'verifia_account_id');
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
 
   Future<void> _logout() async {
     final l10n = AppLocalizations.of(context)!;
@@ -59,7 +70,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const _LoginBridge()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
   }
@@ -82,7 +93,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return _buildError(cs, snap.error.toString(), l10n);
+            return _buildError(cs, snap.error!, l10n);
           }
           return _buildProfile(cs, snap.data!, l10n);
         },
@@ -90,29 +101,37 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     );
   }
 
-  Widget _buildError(ColorScheme cs, String message, AppLocalizations l10n) {
+  Widget _buildError(ColorScheme cs, Object error, AppLocalizations l10n) {
+    final unauthorized = ApiService.isUnauthorized(error);
+    final message = error.toString().replaceFirst('Exception: ', '');
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.cloud_off_rounded, size: 56, color: cs.error),
+          Icon(
+            unauthorized ? Icons.lock_clock_rounded : Icons.cloud_off_rounded,
+            size: 56,
+            color: cs.error,
+          ),
           const SizedBox(height: 16),
           Text(
-            l10n.profileLoadError,
+            unauthorized ? l10n.profileSessionExpired : l10n.profileLoadError,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cs.onSurface),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Text(
-            message.replaceFirst('Exception: ', ''),
-            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
+          if (!unauthorized)
+            Text(
+              message,
+              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: _retry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: Text(l10n.retry),
+            onPressed: unauthorized ? _signInAgain : _retry,
+            icon: Icon(unauthorized ? Icons.login_rounded : Icons.refresh_rounded),
+            label: Text(unauthorized ? l10n.profileSignInAgain : l10n.retry),
           ),
         ]),
       ),
@@ -313,15 +332,5 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
     if (parts.first.isNotEmpty) return parts.first[0].toUpperCase();
     return '?';
-  }
-}
-
-// Thin bridge used after logout — avoids importing HomeScreen's private _LoginScreen
-class _LoginBridge extends StatelessWidget {
-  const _LoginBridge();
-
-  @override
-  Widget build(BuildContext context) {
-    return const HomeScreen();
   }
 }

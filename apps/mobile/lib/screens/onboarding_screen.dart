@@ -54,23 +54,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     try {
       final result = await FaceTecService().startIDMatch(idType: _idType);
+      // Defensive check: a truly completed scan always has a front ID photo
+      // and a face scan. If either is missing, treat it as a failed/cancelled
+      // scan rather than entering the preview with partial data.
+      if (result.idFrontPhoto.isEmpty || result.faceScanBase64.isEmpty) {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(context)!;
+        setState(() {
+          _errorMsg = l10n.onboardingScanCancelled;
+          _step = _Step.form;
+          _scanResult = null;
+        });
+        return;
+      }
       setState(() {
         _scanResult = result;
         _step = _Step.preview;
         _ocrRunning = true;
       });
-      // Run ML Kit OCR on ID photo; FaceTec dev server doesn't return OCR data
+      // Run ML Kit OCR on ID photo as a fallback for when FaceTec's server
+      // doesn't return structured OCR data (e.g. the dev server).
       final detectedName = await _extractNameFromPhoto(result.idFrontPhoto);
       if (mounted) {
-        _nameCtrl.text = detectedName ?? result.fullName ?? '';
+        _nameCtrl.text = result.fullName ?? detectedName ?? '';
         setState(() => _ocrRunning = false);
       }
     } on PlatformException catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _errorMsg = e.message ?? l10n.onboardingScanCancelled;
+        _scanResult = null;
+        _nameCtrl.clear();
         _step = _Step.form;
+        // A plain cancel (X button) shouldn't surface as an error banner —
+        // only show a message for unexpected failures.
+        _errorMsg = e.code == 'ID_MATCH_CANCELLED'
+            ? null
+            : (e.message ?? l10n.onboardingScanCancelled);
       });
     } catch (e) {
       setState(() {
@@ -140,6 +160,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
 
       if (!mounted) return;
+      // Same defensive check as the iOS path: don't enter preview with a
+      // partial/failed capture.
+      if (result.idFrontPhoto.isEmpty || result.faceScanBase64.isEmpty) {
+        final l10n = AppLocalizations.of(context)!;
+        setState(() {
+          _errorMsg = l10n.onboardingCaptureCancelled;
+          _step = _Step.form;
+          _scanResult = null;
+        });
+        return;
+      }
       setState(() {
         _scanResult = result;
         _step = _Step.preview;
@@ -149,13 +180,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Step 4: ML Kit OCR on the captured ID photo (same as iOS path)
       final detectedName = await _extractNameFromPhoto(result.idFrontPhoto);
       if (mounted) {
-        _nameCtrl.text = detectedName ?? result.fullName ?? '';
+        _nameCtrl.text = result.fullName ?? detectedName ?? '';
         setState(() => _ocrRunning = false);
       }
     } on PlatformException catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
+        _scanResult = null;
+        _nameCtrl.clear();
         _errorMsg = e.message ?? l10n.onboardingCaptureCancelled;
         _step = _Step.form;
       });
@@ -180,12 +213,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
 
     try {
+      final fullName = _nameCtrl.text.trim();
+      if (fullName.isEmpty) {
+        // Register button should already prevent this, but guard anyway.
+        setState(() => _step = _Step.preview);
+        return;
+      }
+
       // Resolve device_id from App Attest / fallback storage
       final deviceId = await _resolveDeviceId();
-
-      final fullName = _nameCtrl.text.trim().isNotEmpty
-          ? _nameCtrl.text.trim()
-          : 'Usuario VerifiA';
 
       await _api.registerProfile(
         deviceId: deviceId,
@@ -256,8 +292,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   /// Parses raw OCR text from an INE card to extract the full name.
-  /// Strategy: collect all-uppercase lines before the CURP line, skip short
-  /// lines that look like labels (NOMBRE, APELLIDO, etc.) or single chars.
+  ///
+  /// Primary strategy: anchor on the "NOMBRE" label (always present, right
+  /// above apellido paterno / materno / nombre(s)) and collect up to 3
+  /// uppercase lines that follow it. This avoids picking up the card header
+  /// ("ESTADOS UNIDOS MEXICANOS", "INSTITUTO NACIONAL ELECTORAL"), which OCR
+  /// often garbles into all-caps noise that would otherwise pass a naive
+  /// top-down scan (e.g. "UNIDOS ME", "MÉXICO", "XICO").
+  ///
+  /// Fallback (no NOMBRE anchor found, e.g. a noisy/partial scan): scan from
+  /// the top but explicitly filter out known header/label fragments.
   String? _parseINEName(String rawText) {
     if (rawText.isEmpty) return null;
     final lines = rawText
@@ -266,21 +310,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         .where((l) => l.isNotEmpty)
         .toList();
 
-    // Stop collecting after we hit the CURP line
-    final stopWords = {'CURP', 'FOLIO', 'VIGENCIA', 'CLAVE', 'SEXO', 'ESTADO'};
+    // Stop collecting once we hit these fields (they appear after the name block).
+    final stopWords = {'CURP', 'FOLIO', 'VIGENCIA', 'CLAVE', 'SEXO', 'ESTADO', 'DOMICILIO', 'FECHA'};
     final ignoredLabels = {
       'NOMBRE', 'APELLIDO', 'PATERNO', 'MATERNO', 'APELLIDOS',
-      'NOMBRE(S)', 'NOMBRES', 'INSTITUTO NACIONAL ELECTORAL',
-      'CREDENCIAL PARA VOTAR',
+      'NOMBRE(S)', 'NOMBRES',
     };
+    // Substrings of the card header/boilerplate that OCR frequently garbles
+    // into all-caps fragments (e.g. "UNIDOS ME", "XICO") which would
+    // otherwise slip past the exact-match ignoredLabels check.
+    final headerNoise = [
+      'ESTADOS', 'UNIDOS', 'MEXICANOS', 'MEXICO', 'MÉXICO',
+      'INSTITUTO', 'NACIONAL', 'ELECTORAL', 'CREDENCIAL', 'VOTAR',
+    ];
+    bool isValidNameLine(String upper) {
+      // Must be all-caps alphabetic (with spaces/accents), at least 3 chars
+      if (!RegExp(r'^[A-ZÁÉÍÓÚÜÑ\s]{3,}$').hasMatch(upper)) return false;
+      if (ignoredLabels.contains(upper.trim())) return false;
+      if (headerNoise.any((w) => upper.contains(w))) return false;
+      return true;
+    }
 
+    // Primary: anchor on the NOMBRE label and take the lines right after it.
+    final nombreIndex = lines.indexWhere((l) => l.toUpperCase().trim() == 'NOMBRE');
+    if (nombreIndex != -1) {
+      final anchored = <String>[];
+      for (var i = nombreIndex + 1; i < lines.length && anchored.length < 3; i++) {
+        final upper = lines[i].toUpperCase();
+        if (stopWords.any((w) => upper.contains(w))) break;
+        if (!isValidNameLine(upper)) continue;
+        anchored.add(upper.trim());
+      }
+      if (anchored.isNotEmpty) return anchored.join(' ');
+    }
+
+    // Fallback: top-down scan with header-noise filtering.
     final nameParts = <String>[];
     for (final line in lines) {
       final upper = line.toUpperCase();
       if (stopWords.any((w) => upper.contains(w))) break;
-      // Must be all-caps alphabetic (with spaces/accents), at least 3 chars
-      if (!RegExp(r'^[A-ZÁÉÍÓÚÜÑ\s]{3,}$').hasMatch(upper)) continue;
-      if (ignoredLabels.contains(upper.trim())) continue;
+      if (!isValidNameLine(upper)) continue;
       nameParts.add(upper.trim());
       if (nameParts.length >= 3) break; // apellido pat + mat + nombre(s)
     }
@@ -512,7 +581,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         const SizedBox(height: 16),
 
-        // Name field — read-only, populated from ML Kit OCR
+        // Name field — auto-filled from FaceTec/ML Kit OCR, editable in case
+        // the detected name is wrong or missing.
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
@@ -538,12 +608,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Text(l10n.onboardingOcrReading, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                   ])
                 else
-                  Text(
-                    _nameCtrl.text.isNotEmpty ? _nameCtrl.text : l10n.onboardingNotDetected,
+                  TextFormField(
+                    controller: _nameCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (_) => setState(() {}),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: _nameCtrl.text.isNotEmpty ? cs.onSurface : cs.onSurfaceVariant,
+                      color: cs.onSurface,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      hintText: l10n.onboardingNotDetected,
+                      hintStyle: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
               ]),
@@ -644,7 +727,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
-              onPressed: _ocrRunning ? null : _confirmAndRegister,
+              onPressed: (_ocrRunning || _nameCtrl.text.trim().isEmpty)
+                  ? null
+                  : _confirmAndRegister,
               child: Text(l10n.onboardingRegisterButton),
             ),
           ),

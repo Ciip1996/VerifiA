@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/permissions_wizard_screen.dart';
 import 'screens/presence_challenge_screen.dart';
@@ -108,11 +109,18 @@ class _VerifiAAppState extends State<VerifiAApp> {
 
     // Detect fresh install: Documents dir is cleared on uninstall, but the
     // Keychain is not. If the marker file is absent, treat this as a new
-    // install and clear the wizard-done flag so it runs again.
+    // install — clear the wizard-done flag AND any leftover account state
+    // (profile_registered, session token, cached email/id) so a reinstall
+    // never skips onboarding/login using stale Keychain data from a
+    // previous install.
     final docsDir = await getApplicationDocumentsDirectory();
     final installMarker = File('${docsDir.path}/.install_marker');
     if (!await installMarker.exists()) {
       await storage.delete(key: 'permissions_wizard_done');
+      await storage.delete(key: 'profile_registered');
+      await storage.delete(key: 'verifia_account_email');
+      await storage.delete(key: 'verifia_account_id');
+      await ApiService.clearSession();
       await installMarker.create(recursive: true);
     }
 
@@ -126,9 +134,35 @@ class _VerifiAAppState extends State<VerifiAApp> {
 
     final registered = await storage.read(key: 'profile_registered');
     if (!mounted) return;
-    setState(() {
-      _home = registered == 'true' ? const HomeScreen() : const OnboardingScreen();
-    });
+    if (registered != 'true') {
+      setState(() => _home = const OnboardingScreen());
+      return;
+    }
+
+    // Even if profile_registered is set, the session token may be missing,
+    // expired, or issued against a different backend/environment. Validate
+    // it against the backend before routing into HomeScreen — otherwise the
+    // user lands on tabs (profile, search) that immediately fail with
+    // "Invalid or expired session token".
+    final sessionToken = await ApiService.getSessionToken();
+    if (sessionToken == null) {
+      setState(() => _home = const LoginScreen());
+      return;
+    }
+
+    try {
+      await ApiService().fetchMe();
+      if (!mounted) return;
+      setState(() => _home = const HomeScreen());
+    } catch (e) {
+      if (!mounted) return;
+      if (ApiService.isUnauthorized(e)) {
+        setState(() => _home = const LoginScreen());
+      } else {
+        // Network/transient error — don't lock the user out while offline.
+        setState(() => _home = const HomeScreen());
+      }
+    }
   }
 
   Future<void> _initDeepLinks() async {
