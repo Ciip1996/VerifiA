@@ -735,10 +735,6 @@
 
   "setPasswordCreateButton": "Crear cuenta",
   "@setPasswordCreateButton": { "description": "Button to create the web account on set-password screen" },
-
-  "setPasswordSkip": "Omitir por ahora",
-  "@setPasswordSkip": { "description": "Button to skip creating a web account for now" },
-
   "wizardWelcomeTitle": "Bienvenido a VerifiA",
   "@wizardWelcomeTitle": { "description": "Welcome step title in the permissions wizard" },
 

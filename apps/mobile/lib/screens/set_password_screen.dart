@@ -56,13 +56,6 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
     }
   }
 
-  void _skip() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (_) => false,
-    );
-  }
-
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -186,15 +179,6 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : Text(l10n.setPasswordCreateButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: _skip,
-                    child: Text(l10n.setPasswordSkip, style: TextStyle(color: cs.onSurfaceVariant)),
                   ),
                 ),
               ],

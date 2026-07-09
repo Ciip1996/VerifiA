@@ -246,7 +246,6 @@
   "setPasswordConfirmLabel": "Confirm password",
   "setPasswordPasswordMismatch": "Passwords do not match",
   "setPasswordCreateButton": "Create account",
-  "setPasswordSkip": "Skip for now",
 
   "wizardWelcomeTitle": "Welcome to VerifiA",
   "wizardWelcomeDesc": "To give you the best identity verification experience, we need to configure some permissions on your device.",

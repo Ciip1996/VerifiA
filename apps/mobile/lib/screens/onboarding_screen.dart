@@ -73,8 +73,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _ocrRunning = true;
       });
       // Run ML Kit OCR on ID photo as a fallback for when FaceTec's server
-      // doesn't return structured OCR data (e.g. the dev server).
-      final detectedName = await _extractNameFromPhoto(result.idFrontPhoto);
+      // doesn't return structured OCR data (e.g. the dev server). This
+      // heuristic is tuned for the INE layout only — running it against a
+      // passport photo page picks up header words like "PASAPORTE" instead
+      // of the name, so skip it for non-INE documents.
+      final detectedName = _idType == 'INE'
+          ? await _extractNameFromPhoto(result.idFrontPhoto)
+          : null;
       if (mounted) {
         _nameCtrl.text = result.fullName ?? detectedName ?? '';
         setState(() => _ocrRunning = false);
@@ -177,8 +182,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _ocrRunning = true;
       });
 
-      // Step 4: ML Kit OCR on the captured ID photo (same as iOS path)
-      final detectedName = await _extractNameFromPhoto(result.idFrontPhoto);
+      // Step 4: ML Kit OCR on the captured ID photo (same as iOS path).
+      // INE-tuned heuristic only — skip for passports (see iOS path comment).
+      final detectedName = _idType == 'INE'
+          ? await _extractNameFromPhoto(result.idFrontPhoto)
+          : null;
       if (mounted) {
         _nameCtrl.text = result.fullName ?? detectedName ?? '';
         setState(() => _ocrRunning = false);

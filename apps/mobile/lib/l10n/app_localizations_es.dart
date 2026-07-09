@@ -766,9 +766,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get setPasswordCreateButton => 'Crear cuenta';
 
   @override
-  String get setPasswordSkip => 'Omitir por ahora';
-
-  @override
   String get wizardWelcomeTitle => 'Bienvenido a VerifiA';
 
   @override

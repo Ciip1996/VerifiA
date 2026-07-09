@@ -1472,12 +1472,6 @@ abstract class AppLocalizations {
   /// **'Crear cuenta'**
   String get setPasswordCreateButton;
 
-  /// Button to skip creating a web account for now
-  ///
-  /// In es, this message translates to:
-  /// **'Omitir por ahora'**
-  String get setPasswordSkip;
-
   /// Welcome step title in the permissions wizard
   ///
   /// In es, this message translates to:
