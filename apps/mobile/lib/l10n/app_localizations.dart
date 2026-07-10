@@ -212,10 +212,10 @@ abstract class AppLocalizations {
   /// **'Escanear'**
   String get homeTabScan;
 
-  /// Navigation tab label for creating a QR challenge
+  /// Navigation tab label for requesting a verification
   ///
   /// In es, this message translates to:
-  /// **'Crear QR'**
+  /// **'Solicitar'**
   String get homeTabCreateQr;
 
   /// Navigation tab label for incoming/sent validations and history

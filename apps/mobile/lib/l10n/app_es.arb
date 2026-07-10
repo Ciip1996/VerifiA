@@ -58,8 +58,8 @@
   "homeTabScan": "Escanear",
   "@homeTabScan": { "description": "Navigation tab label for QR scanner" },
 
-  "homeTabCreateQr": "Crear QR",
-  "@homeTabCreateQr": { "description": "Navigation tab label for creating a QR challenge" },
+  "homeTabCreateQr": "Solicitar",
+  "@homeTabCreateQr": { "description": "Navigation tab label for requesting a verification" },
 
   "homeTabInbox": "Actividad",
   "@homeTabInbox": { "description": "Navigation tab label for incoming/sent validations and history" },

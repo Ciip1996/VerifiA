@@ -69,7 +69,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTabScan => 'Scan';
 
   @override
-  String get homeTabCreateQr => 'Create QR';
+  String get homeTabCreateQr => 'Request';
 
   @override
   String get homeTabInbox => 'Activity';

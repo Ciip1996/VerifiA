@@ -22,7 +22,7 @@ import 'user_search_screen.dart';
 import 'verification_detail_screen.dart';
 
 /// Main scaffold shown after successful onboarding + account setup.
-/// Four tabs: QR Scanner, Create QR, Solicitudes, Buscar.
+/// Four tabs: QR Scanner, Solicitar (request verification), Solicitudes, Buscar.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 

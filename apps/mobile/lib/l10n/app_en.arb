@@ -22,7 +22,7 @@
 
   "homeOfflineBanner": "No server connection",
   "homeTabScan": "Scan",
-  "homeTabCreateQr": "Create QR",
+  "homeTabCreateQr": "Request",
   "homeTabInbox": "Activity",
   "homeTabSearch": "Search",
   "bannerNewRequest": "New verification request",
