@@ -72,8 +72,24 @@ class OneSignalService {
   /// has an ID. Call this once an authenticated session is guaranteed to
   /// exist (e.g. `HomeScreen.initState`) so the ID actually reaches the
   /// backend. Safe to call repeatedly — the backend upserts by token.
-  void syncDeviceToken() {
-    _maybeRegisterSubscription(OneSignal.User.pushSubscription.id);
+  ///
+  /// Retries with a short backoff if the ID isn't resolved yet: the Dart
+  /// binding doesn't necessarily have the native SDK's already-persisted
+  /// subscription state synced in the same frame `initialize()` returns in,
+  /// so an immediate read can see a `local-*` placeholder even though a real
+  /// subscription already exists — and since nothing "changes" on this
+  /// launch, the observer may never fire to correct it either.
+  void syncDeviceToken([int attempt = 0]) {
+    final id = OneSignal.User.pushSubscription.id;
+    if (_isServerAssigned(id)) {
+      _maybeRegisterSubscription(id);
+      return;
+    }
+    if (attempt >= 8) return; // ~30s of retries; the observer may still catch it later
+    Future.delayed(
+      Duration(seconds: attempt < 3 ? 1 : 4),
+      () => syncDeviceToken(attempt + 1),
+    );
   }
 
   // ── User identity ─────────────────────────────────────────────────────────
