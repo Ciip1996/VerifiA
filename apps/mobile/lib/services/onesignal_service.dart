@@ -35,24 +35,45 @@ class OneSignalService {
 
   // ── Token registration ────────────────────────────────────────────────────
 
-  /// Registers the push subscription's server-assigned token with the
-  /// VerifiA backend, both right now (if one is already assigned — e.g. the
-  /// OneSignal SDK restored a subscription that predates this app launch,
-  /// such as after a reinstall) and on every future change. Relying solely on
-  /// the observer misses the current value: `addObserver` only fires on
-  /// transitions, so if the token is already set by the time we attach it
-  /// (no "change" occurs), the backend never learns about it.
+  /// Registers the push subscription's server-assigned *Subscription ID*
+  /// (formerly called "Player ID") with the VerifiA backend — NOT
+  /// `pushSubscription.token`, which is the raw platform APNs/FCM token and
+  /// is a different value. The backend's OneSignal REST call targets
+  /// recipients via `include_subscription_ids`, which requires the
+  /// Subscription ID; sending the raw device token there silently matches
+  /// nobody.
+  ///
+  /// Runs both right now (if an ID is already assigned — e.g. the OneSignal
+  /// SDK restored a subscription that predates this app launch, such as
+  /// after a reinstall) and on every future change. Relying solely on the
+  /// observer misses the current value: `addObserver` only fires on
+  /// transitions, so if the ID is already set by the time we attach it (no
+  /// "change" occurs), the backend never learns about it.
   void _registerBackendTokenOnChange() {
-    _maybeRegisterToken(OneSignal.User.pushSubscription.token);
+    _maybeRegisterSubscription(OneSignal.User.pushSubscription.id);
     OneSignal.User.pushSubscription.addObserver((state) {
-      _maybeRegisterToken(state.current.token);
+      _maybeRegisterSubscription(state.current.id);
     });
   }
 
-  void _maybeRegisterToken(String? token) {
-    if (token == null || token.isEmpty) return;
+  void _maybeRegisterSubscription(String? subscriptionId) {
+    if (!_isServerAssigned(subscriptionId)) return;
     final platform = Platform.isIOS ? 'ios' : 'android';
-    ApiService().registerDeviceToken(token, platform);
+    ApiService().registerDeviceToken(subscriptionId!, platform);
+  }
+
+  /// Re-attempts registering whatever Subscription ID is currently assigned.
+  ///
+  /// [initialize] is called during onboarding (`PermissionsWizardScreen`),
+  /// before an account/session exists — at that point `registerDeviceToken`
+  /// silently 401s because the backend requires auth, and since it's only
+  /// wired to fire on the push subscription's *observer* (a one-time event
+  /// per ID value), it never gets a second chance once the device already
+  /// has an ID. Call this once an authenticated session is guaranteed to
+  /// exist (e.g. `HomeScreen.initState`) so the ID actually reaches the
+  /// backend. Safe to call repeatedly — the backend upserts by token.
+  void syncDeviceToken() {
+    _maybeRegisterSubscription(OneSignal.User.pushSubscription.id);
   }
 
   // ── User identity ─────────────────────────────────────────────────────────
@@ -64,11 +85,11 @@ class OneSignalService {
   }
 
   /// Disassociates the device from the account on logout.
-  /// Also unregisters the push token from the VerifiA backend.
+  /// Also unregisters the push subscription from the VerifiA backend.
   Future<void> logout() async {
-    final token = OneSignal.User.pushSubscription.token;
-    if (token != null && token.isNotEmpty) {
-      await ApiService().unregisterDeviceToken(token);
+    final subscriptionId = OneSignal.User.pushSubscription.id;
+    if (_isServerAssigned(subscriptionId)) {
+      await ApiService().unregisterDeviceToken(subscriptionId!);
     }
     OneSignal.logout();
   }

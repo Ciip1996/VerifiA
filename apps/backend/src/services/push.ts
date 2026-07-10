@@ -26,11 +26,11 @@ export async function pushToAccount(
   });
   if (rows.length === 0) return;
 
-  const playerIds = rows.map((r) => r.token);
+  const subscriptionIds = rows.map((r) => r.token);
 
   const payload = {
     app_id: creds.appId,
-    include_player_ids: playerIds,
+    include_subscription_ids: subscriptionIds,
     headings: { en: notification.title, es: notification.title },
     contents: { en: notification.body, es: notification.body },
     data: notification.data ?? {},

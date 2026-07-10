@@ -67,6 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         OneSignalService().initialize();
+        // HomeScreen is only ever reached with a valid authenticated session,
+        // unlike the onboarding wizard where OneSignal is first initialized —
+        // re-sync here so the device token actually reaches the backend.
+        OneSignalService().syncDeviceToken();
         OneSignalService().setupSubscriptionVerification(context);
         OneSignalService().addClickListener(_onNotificationClick);
         OneSignalService().addForegroundListener(_onForegroundNotification);
